@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduConnect - Admin Login</title>
+    <title>EduConnect - Student Login</title>
     <link rel="stylesheet" href="../assets/css/main.css">
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
-<body class="admin-login">
+<body class="student-login">
     <div class="login-container">
         <div class="login-box">
             <div class="login-header">
                 <h1>EduConnect</h1>
-                <p>Admin Portal - Login</p>
+                <p>Student Portal - Login</p>
             </div>
             
             <form id="loginForm" class="login-form">
                 <div class="form-group">
-                    <label for="email">Admin Email / Username</label>
+                    <label for="email">Student ID / Email</label>
                     <input 
                         type="text" 
                         id="email" 
                         name="email" 
-                        placeholder="Enter your admin email or username"
+                        placeholder="Enter your student ID or email"
                         maxlength="100"
                         autocomplete="username"
                     >
@@ -54,7 +54,7 @@
                 </div>
                 
                 <div class="login-footer">
-                    <p>Need different access? <a href="superadmin-login.html">Super Admin</a> | <a href="../customer/login.html">Student</a></p>
+                    <p>Not a student? <a href="../admin/login.html">Admin Login</a></p>
                 </div>
             </form>
         </div>
@@ -62,8 +62,8 @@
 
     <!-- Load Firebase Config -->
     <script src="../../src/config/firebaseConfig.js"></script>
-    <!-- Load Admin Auth Script -->
-    <script src="../assets/js/admin-auth.js"></script>
+    <!-- Load Student Auth Script -->
+    <script src="../assets/js/student-auth.js"></script>
 </body>
 </html>
 

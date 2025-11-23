@@ -1,4 +1,4 @@
-// Wait for DOM to be ready
+// Super Admin Authentication Script
 document.addEventListener('DOMContentLoaded', function() {
     // Get form elements
     const loginForm = document.getElementById('loginForm');
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Validate email/username
         if (!emailInput.value.trim()) {
-            emailError.textContent = 'Email/Username is required';
+            emailError.textContent = 'Super Admin Email/Username is required';
             emailInput.classList.add('error');
             isValid = false;
         }
@@ -46,12 +46,10 @@ document.addEventListener('DOMContentLoaded', function() {
         return isValid;
     }
 
-    // Login function
+    // Login function - Only allows Super Admin role
     async function handleLogin() {
-        // Clear previous errors
         clearErrors();
 
-        // Validate inputs
         if (!validateInputs()) {
             return;
         }
@@ -59,33 +57,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const email = emailInput.value.trim();
         const password = passwordInput.value;
 
-        // Disable login button during processing
         loginBtn.disabled = true;
         loginBtn.textContent = 'Logging in...';
 
         try {
-            // Try Firebase Authentication first (email-based)
             let userCredential = null;
-            
-            // Check if input is email format
             const isEmail = email.includes('@');
             
             if (isEmail) {
-                // Firebase email authentication
                 userCredential = await auth.signInWithEmailAndPassword(email, password);
             } else {
-                // If username, check Firestore for user document
+                // Check Firestore for username
                 const usersRef = db.collection('users');
                 const userSnapshot = await usersRef.where('username', '==', email).limit(1).get();
                 
                 if (userSnapshot.empty) {
-                    throw new Error('Invalid username or password');
+                    throw new Error('Invalid super admin credentials');
                 }
                 
                 const userDoc = userSnapshot.docs[0].data();
                 const userEmail = userDoc.email;
                 
-                // Sign in with email from Firestore
                 userCredential = await auth.signInWithEmailAndPassword(userEmail, password);
             }
 
@@ -99,8 +91,20 @@ document.addEventListener('DOMContentLoaded', function() {
             const userData = userDoc.data();
             const userRole = userData.role || 'Client User';
 
+            // Validate role - Only Super Admin can login here
+            if (userRole !== 'Super Admin') {
+                await auth.signOut();
+                if (userRole === 'Admin') {
+                    throw new Error('Access denied. Admin accounts must use the Admin login portal.');
+                } else if (userRole === 'Client User') {
+                    throw new Error('Access denied. This portal is for Super Administrators only. Please use the student login page.');
+                } else {
+                    throw new Error('Access denied. This portal is restricted to Super Administrators only.');
+                }
+            }
+
             // Log login activity to audit trail
-            await logAuditTrail(userCredential.user.uid, 'login', 'User logged in successfully');
+            await logAuditTrail(userCredential.user.uid, 'login', 'Super Admin logged in successfully');
 
             // Store user data in sessionStorage
             sessionStorage.setItem('user', JSON.stringify({
@@ -110,12 +114,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 username: userData.username || email
             }));
 
-            // Redirect based on role
-            if (userRole === 'Super Admin' || userRole === 'Admin') {
-                window.location.href = 'dashboard.html';
-            } else {
-                window.location.href = '../customer/dashboard.html';
-            }
+            // Redirect to admin dashboard (Super Admin uses admin dashboard)
+            window.location.href = 'dashboard.html';
 
         } catch (error) {
             console.error('Login error:', error);
@@ -130,13 +130,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const errorCode = error.code || error.message;
         
         if (errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
-            return 'Invalid email/username or password';
+            return 'Invalid super admin email/username or password';
         } else if (errorCode === 'auth/invalid-email') {
             return 'Invalid email format';
         } else if (errorCode === 'auth/user-disabled') {
             return 'This account has been disabled';
         } else if (errorCode === 'auth/too-many-requests') {
             return 'Too many failed attempts. Please try again later';
+        } else if (typeof errorCode === 'string' && errorCode.includes('Access denied')) {
+            return errorCode;
         } else if (typeof errorCode === 'string' && errorCode.includes('Invalid')) {
             return errorCode;
         } else {
@@ -159,7 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Get client IP (simplified - in production, use a service)
+    // Get client IP
     async function getClientIP() {
         try {
             const response = await fetch('https://api.ipify.org?format=json');
@@ -186,7 +188,6 @@ document.addEventListener('DOMContentLoaded', function() {
     exitBtn.addEventListener('click', function() {
         if (confirm('Are you sure you want to exit?')) {
             window.close();
-            // If window.close() doesn't work, redirect to a safe page
             if (window.history.length > 1) {
                 window.history.back();
             } else {
@@ -195,10 +196,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Real-time validation on input
+    // Real-time validation
     emailInput.addEventListener('blur', function() {
         if (!emailInput.value.trim()) {
-            emailError.textContent = 'Email/Username is required';
+            emailError.textContent = 'Super Admin Email/Username is required';
             emailInput.classList.add('error');
         } else {
             emailError.textContent = '';
@@ -216,7 +217,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Clear errors on input
     emailInput.addEventListener('input', function() {
         if (emailInput.value.trim()) {
             emailError.textContent = '';
