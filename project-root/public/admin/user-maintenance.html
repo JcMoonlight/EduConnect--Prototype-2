@@ -165,7 +165,7 @@
                 <div class="form-group" id="passwordGroup">
                     <label for="password">Password *</label>
                     <div class="password-input-wrapper">
-                        <input type="password" id="password" name="password" maxlength="50" />
+                        <input type="password" id="password" name="password" minlength="8" maxlength="128" autocomplete="new-password" />
                         <button type="button" class="password-toggle" id="modalPasswordToggle">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" id="modalEyeIcon">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -176,6 +176,7 @@
                             </svg>
                         </button>
                     </div>
+                    <div id="passwordRequirements"></div>
                     <span class="error-message" id="passwordError"></span>
                     <small class="form-hint" id="passwordHint">Required for new users. Leave blank when editing to keep current password.</small>
                 </div>
@@ -232,6 +233,8 @@
     <script src="../../src/config/firebaseConfig.js"></script>
     <!-- Load Auth Guard -->
     <script src="../assets/js/auth-guard.js"></script>
+    <!-- Load Password Validator -->
+    <script src="../assets/js/password-validator.js"></script>
     <!-- Load User Management Script -->
     <script src="../assets/js/user.js"></script>
 </body>

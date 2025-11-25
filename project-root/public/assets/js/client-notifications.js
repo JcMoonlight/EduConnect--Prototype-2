@@ -8,9 +8,14 @@ let currentTypeFilter = '';
 document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(async function() {
         const user = auth.currentUser;
-        if (!user) return;
+        if (!user) {
+            console.error('No user found, redirecting to login');
+            window.location.href = 'login.html';
+            return;
+        }
 
         currentUser = user;
+        console.log('Loading notifications for user:', user.uid);
         await loadNotifications();
         setupEventListeners();
     }, 1000);
@@ -20,21 +25,51 @@ document.addEventListener('DOMContentLoaded', async function() {
 async function loadNotifications() {
     try {
         const notificationsList = document.getElementById('notificationsList');
+        if (!notificationsList) return;
+        
         notificationsList.innerHTML = '<div class="table-loading">Loading notifications...</div>';
 
-        const notificationsSnapshot = await db.collection('notifications')
-            .orderBy('timestamp', 'desc')
-            .get();
+        // Check if currentUser is set
+        if (!currentUser || !currentUser.uid) {
+            console.error('Current user not available');
+            notificationsList.innerHTML = '<div class="table-error">User not authenticated. Please login again.</div>';
+            return;
+        }
+
+        let notificationsSnapshot;
+        
+        try {
+            // Try to get notifications ordered by timestamp
+            notificationsSnapshot = await db.collection('notifications')
+                .orderBy('timestamp', 'desc')
+                .get();
+        } catch (error) {
+            // If index doesn't exist, get all notifications and sort manually
+            console.warn('Index not found, fetching all notifications:', error);
+            notificationsSnapshot = await db.collection('notifications').get();
+        }
 
         notifications = [];
+        const userId = currentUser.uid;
+        
         notificationsSnapshot.forEach(doc => {
             const notification = doc.data();
+            
+            // Ensure targetUserIds is an array
+            const targetUserIds = Array.isArray(notification.targetUserIds) 
+                ? notification.targetUserIds 
+                : (notification.targetUserIds ? [notification.targetUserIds] : []);
+            
             // Only include notifications where user is in targetUserIds
-            if (notification.targetUserIds && notification.targetUserIds.includes(currentUser.uid)) {
+            if (targetUserIds.length > 0 && targetUserIds.includes(userId)) {
+                const isRead = notification.readStatus && 
+                              typeof notification.readStatus === 'object' && 
+                              notification.readStatus[userId] === true;
+                
                 notifications.push({
                     id: doc.id,
                     ...notification,
-                    isRead: notification.readStatus && notification.readStatus[currentUser.uid] === true
+                    isRead: isRead
                 });
             }
         });
@@ -45,7 +80,11 @@ async function loadNotifications() {
                 return a.isRead ? 1 : -1;
             }
             if (a.timestamp && b.timestamp) {
-                return b.timestamp.toDate() - a.timestamp.toDate();
+                try {
+                    return b.timestamp.toDate() - a.timestamp.toDate();
+                } catch (e) {
+                    return 0;
+                }
             }
             return 0;
         });
@@ -54,10 +93,16 @@ async function loadNotifications() {
         updateStats();
         applyFilters();
 
+        console.log(`Loaded ${notifications.length} notifications for user ${userId}`);
+
     } catch (error) {
         console.error('Error loading notifications:', error);
-        document.getElementById('notificationsList').innerHTML = 
-            '<div class="table-error">Error loading notifications. Please refresh the page.</div>';
+        console.error('Error details:', error.message, error.stack);
+        const notificationsList = document.getElementById('notificationsList');
+        if (notificationsList) {
+            notificationsList.innerHTML = 
+                '<div class="table-error">Error loading notifications. Please refresh the page.</div>';
+        }
     }
 }
 

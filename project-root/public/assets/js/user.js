@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             // Initialize
             await loadUsers();
             setupEventListeners();
+            initializePasswordRequirements();
 
         } catch (error) {
             console.error('Error initializing user management:', error);
@@ -234,6 +235,10 @@ function openAddModal() {
     document.getElementById('passwordGroup').style.display = 'block';
     document.getElementById('password').setAttribute('required', 'required');
     document.getElementById('studentIdGroup').style.display = 'none';
+    
+    // Initialize password requirements for new user
+    initializePasswordRequirements();
+    
     clearFormErrors();
     document.getElementById('userModal').style.display = 'flex';
 }
@@ -263,6 +268,10 @@ function openEditModal(user) {
     document.getElementById('passwordGroup').style.display = 'none';
     document.getElementById('password').removeAttribute('required');
     document.getElementById('password').value = '';
+    const passwordRequirements = document.getElementById('passwordRequirements');
+    if (passwordRequirements) {
+        passwordRequirements.innerHTML = '';
+    }
 
     // Show student ID if Client User
     if (user.role === 'Client User') {
@@ -387,9 +396,14 @@ function validateForm(userData, isEditMode) {
         if (!password) {
             showFieldError('password', 'Password is required for new users');
             isValid = false;
-        } else if (password.length < 6) {
-            showFieldError('password', 'Password must be at least 6 characters');
-            isValid = false;
+        } else {
+            // Use password validator
+            const passwordValidation = validatePassword(password);
+            if (!passwordValidation.isValid) {
+                const errorMessage = getPasswordValidationErrorMessage(passwordValidation);
+                showFieldError('password', errorMessage);
+                isValid = false;
+            }
         }
     }
 
@@ -605,6 +619,27 @@ function getErrorMessage(error) {
         return error.message;
     } else {
         return 'An error occurred. Please try again.';
+    }
+}
+
+// Initialize Password Requirements
+function initializePasswordRequirements() {
+    const requirementsContainer = document.getElementById('passwordRequirements');
+    if (!requirementsContainer) return;
+
+    requirementsContainer.innerHTML = getPasswordRequirementsHTML();
+
+    // Remove existing listener if any, then add new one
+    const passwordInput = document.getElementById('password');
+    if (passwordInput) {
+        // Clone and replace to remove old listeners
+        const newPasswordInput = passwordInput.cloneNode(true);
+        passwordInput.parentNode.replaceChild(newPasswordInput, passwordInput);
+        
+        // Add real-time validation
+        newPasswordInput.addEventListener('input', function() {
+            updatePasswordRequirementsUI(this.value, requirementsContainer);
+        });
     }
 }
 

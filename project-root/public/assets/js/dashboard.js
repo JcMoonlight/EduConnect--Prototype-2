@@ -34,46 +34,62 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Load Admin Dashboard Data
 async function loadAdminDashboard(userId) {
     try {
-        // Get total events count
-        const eventsSnapshot = await db.collection('events').get();
-        const totalEvents = eventsSnapshot.size;
-        const totalEventsEl = document.getElementById('totalEvents');
-        if (totalEventsEl) totalEventsEl.textContent = totalEvents;
+        // Get user role to determine what to load
+        const userData = JSON.parse(sessionStorage.getItem('user') || '{}');
+        const userRole = userData.role;
 
-        // Get upcoming events (events with dateTime >= today)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
-        
-        try {
-            const upcomingEventsSnapshot = await db.collection('events')
-                .where('dateTime', '>=', todayTimestamp)
-                .orderBy('dateTime', 'asc')
-                .get();
+        // Only load Events, Attendance, and Reports data for Admin (not Super Admin)
+        if (userRole === 'Admin') {
+            // Get total events count
+            const eventsSnapshot = await db.collection('events').get();
+            const totalEvents = eventsSnapshot.size;
+            const totalEventsEl = document.getElementById('totalEvents');
+            if (totalEventsEl) totalEventsEl.textContent = totalEvents;
+
+            // Get upcoming events (events with dateTime >= today)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
             
-            const upcomingEvents = upcomingEventsSnapshot.size;
-            const upcomingEventsEl = document.getElementById('upcomingEvents');
-            if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingEvents;
-        } catch (error) {
-            // If index doesn't exist, count manually
-            let upcomingCount = 0;
-            eventsSnapshot.forEach(doc => {
-                const event = doc.data();
-                if (event.dateTime && event.dateTime.toDate() >= today) {
-                    upcomingCount++;
-                }
-            });
-            const upcomingEventsEl = document.getElementById('upcomingEvents');
-            if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingCount;
+            try {
+                const upcomingEventsSnapshot = await db.collection('events')
+                    .where('dateTime', '>=', todayTimestamp)
+                    .orderBy('dateTime', 'asc')
+                    .get();
+                
+                const upcomingEvents = upcomingEventsSnapshot.size;
+                const upcomingEventsEl = document.getElementById('upcomingEvents');
+                if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingEvents;
+            } catch (error) {
+                // If index doesn't exist, count manually
+                let upcomingCount = 0;
+                eventsSnapshot.forEach(doc => {
+                    const event = doc.data();
+                    if (event.dateTime && event.dateTime.toDate() >= today) {
+                        upcomingCount++;
+                    }
+                });
+                const upcomingEventsEl = document.getElementById('upcomingEvents');
+                if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingCount;
+            }
+
+            // Get total attendance logs count
+            const attendanceLogsSnapshot = await db.collection('attendanceLogs').get();
+            const totalAttendanceLogs = attendanceLogsSnapshot.size;
+            const totalAttendanceLogsEl = document.getElementById('totalAttendanceLogs');
+            if (totalAttendanceLogsEl) totalAttendanceLogsEl.textContent = totalAttendanceLogs;
+        } else if (userRole === 'Super Admin') {
+            // Hide Events and Attendance widgets for Super Admin
+            const eventsWidget = document.getElementById('eventsWidget');
+            const upcomingEventsWidget = document.getElementById('upcomingEventsWidget');
+            const attendanceWidget = document.getElementById('attendanceWidget');
+            
+            if (eventsWidget) eventsWidget.style.display = 'none';
+            if (upcomingEventsWidget) upcomingEventsWidget.style.display = 'none';
+            if (attendanceWidget) attendanceWidget.style.display = 'none';
         }
 
-        // Get total attendance logs count
-        const attendanceLogsSnapshot = await db.collection('attendanceLogs').get();
-        const totalAttendanceLogs = attendanceLogsSnapshot.size;
-        const totalAttendanceLogsEl = document.getElementById('totalAttendanceLogs');
-        if (totalAttendanceLogsEl) totalAttendanceLogsEl.textContent = totalAttendanceLogs;
-
-        // Get unread notifications count for current user
+        // Get unread notifications count for current user (both Admin and Super Admin)
         const notificationsSnapshot = await db.collection('notifications').get();
         let unreadCount = 0;
         notificationsSnapshot.forEach(doc => {
@@ -138,42 +154,37 @@ async function loadStudentDashboard(userId) {
         const eventsAttendedEl = document.getElementById('eventsAttended');
         if (eventsAttendedEl) eventsAttendedEl.textContent = eventsAttended.size;
 
-        // Get upcoming events count
+        // Get upcoming events count - Always use manual filtering to avoid index issues
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
         
-        try {
-            const upcomingEventsSnapshot = await db.collection('events')
-                .where('dateTime', '>=', todayTimestamp)
-                .orderBy('dateTime', 'asc')
-                .get();
-            
-            const upcomingEventsEl = document.getElementById('upcomingEvents');
-            if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingEventsSnapshot.size;
-        } catch (error) {
-            // If index doesn't exist, count manually
-            const eventsSnapshot = await db.collection('events').get();
-            let upcomingCount = 0;
-            eventsSnapshot.forEach(doc => {
-                const event = doc.data();
-                if (event.dateTime && event.dateTime.toDate() >= today) {
+        const eventsSnapshot = await db.collection('events').get();
+        let upcomingCount = 0;
+        eventsSnapshot.forEach(doc => {
+            const event = doc.data();
+            if (event.dateTime) {
+                const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
+                if (eventDate >= today) {
                     upcomingCount++;
                 }
-            });
-            const upcomingEventsEl = document.getElementById('upcomingEvents');
-            if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingCount;
-        }
+            }
+        });
+        const upcomingEventsEl = document.getElementById('upcomingEvents');
+        if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingCount;
 
         // Get unread notifications count
         const notificationsSnapshot = await db.collection('notifications').get();
         let unreadCount = 0;
+        let totalNotifications = 0;
         notificationsSnapshot.forEach(doc => {
             const notification = doc.data();
-            const readStatus = notification.readStatus || {};
-            if (notification.targetUserIds && notification.targetUserIds.includes(userId)) {
-                if (!readStatus[userId]) {
-                    unreadCount++;
+            if (notification.targetUserIds && Array.isArray(notification.targetUserIds)) {
+                if (notification.targetUserIds.includes(userId)) {
+                    totalNotifications++;
+                    const readStatus = notification.readStatus || {};
+                    if (!readStatus[userId]) {
+                        unreadCount++;
+                    }
                 }
             }
         });
@@ -185,6 +196,7 @@ async function loadStudentDashboard(userId) {
 
     } catch (error) {
         console.error('Error loading student dashboard:', error);
+        console.error('Error details:', error.message, error.stack);
         // Set default values on error
         const attendanceRateEl = document.getElementById('attendanceRate');
         if (attendanceRateEl) attendanceRateEl.textContent = '0%';
@@ -297,37 +309,33 @@ async function loadUpcomingEventsList(userId, limit = 5) {
     try {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const todayTimestamp = firebase.firestore.Timestamp.fromDate(today);
 
-        let eventsSnapshot;
-        try {
-            eventsSnapshot = await db.collection('events')
-                .where('dateTime', '>=', todayTimestamp)
-                .orderBy('dateTime', 'asc')
-                .limit(limit)
-                .get();
-        } catch (error) {
-            // If index doesn't exist, get all and filter manually
-            const allEventsSnapshot = await db.collection('events').get();
-            const upcomingEvents = [];
-            allEventsSnapshot.forEach(doc => {
-                const event = doc.data();
-                if (event.dateTime && event.dateTime.toDate() >= today) {
-                    upcomingEvents.push({ id: doc.id, ...event });
+        // Always use manual filtering to avoid index issues
+        const allEventsSnapshot = await db.collection('events').get();
+        const upcomingEvents = [];
+        
+        allEventsSnapshot.forEach(doc => {
+            const event = doc.data();
+            if (event.dateTime) {
+                const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
+                if (eventDate >= today) {
+                    upcomingEvents.push({ id: doc.id, ...event, dateTime: event.dateTime });
                 }
-            });
-            upcomingEvents.sort((a, b) => a.dateTime.toDate() - b.dateTime.toDate());
-            eventsSnapshot = {
-                forEach: (callback) => upcomingEvents.slice(0, limit).forEach(callback),
-                empty: upcomingEvents.length === 0
-            };
-        }
+            }
+        });
+        
+        // Sort by date
+        upcomingEvents.sort((a, b) => {
+            const dateA = a.dateTime.toDate ? a.dateTime.toDate() : new Date(a.dateTime);
+            const dateB = b.dateTime.toDate ? b.dateTime.toDate() : new Date(b.dateTime);
+            return dateA - dateB;
+        });
 
         const eventsList = document.getElementById('upcomingEventsList');
 
         if (!eventsList) return;
 
-        if (eventsSnapshot.empty) {
+        if (upcomingEvents.length === 0) {
             eventsList.innerHTML = `
                 <div class="activity-item">
                     <div class="activity-content">
@@ -340,15 +348,15 @@ async function loadUpcomingEventsList(userId, limit = 5) {
 
         eventsList.innerHTML = '';
 
-        eventsSnapshot.forEach(doc => {
-            const event = doc.data ? doc.data() : doc;
-            const eventId = doc.id || event.id;
-            const eventItem = createEventItem(event, eventId);
+        // Show only the first 'limit' events
+        upcomingEvents.slice(0, limit).forEach(event => {
+            const eventItem = createEventItem(event, event.id);
             eventsList.appendChild(eventItem);
         });
 
     } catch (error) {
         console.error('Error loading upcoming events:', error);
+        console.error('Error details:', error.message, error.stack);
         const eventsList = document.getElementById('upcomingEventsList');
         if (eventsList) {
             eventsList.innerHTML = `
@@ -370,14 +378,20 @@ function createEventItem(event, eventId) {
     // Format date
     let dateText = 'Date TBD';
     if (event.dateTime) {
-        const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
-        dateText = eventDate.toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        try {
+            const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
+            if (eventDate instanceof Date && !isNaN(eventDate.getTime())) {
+                dateText = eventDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+        } catch (error) {
+            console.error('Error formatting event date:', error);
+        }
     }
 
     item.innerHTML = `

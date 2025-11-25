@@ -102,6 +102,38 @@ function setupEventListeners() {
     document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
         togglePasswordVisibility('confirmPassword', this);
     });
+
+    // Initialize Password Requirements
+    initializePasswordRequirements();
+}
+
+// Initialize Password Requirements UI
+function initializePasswordRequirements() {
+    const requirementsContainer = document.getElementById('newPasswordRequirements');
+    if (!requirementsContainer) return;
+
+    requirementsContainer.innerHTML = getPasswordRequirementsHTML();
+
+    // Add real-time validation
+    const newPasswordInput = document.getElementById('newPassword');
+    if (newPasswordInput) {
+        newPasswordInput.addEventListener('input', function() {
+            updatePasswordRequirementsUI(this.value, requirementsContainer);
+        });
+    }
+
+    // Add confirmation password validation
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    if (confirmPasswordInput) {
+        confirmPasswordInput.addEventListener('input', function() {
+            const newPassword = document.getElementById('newPassword').value;
+            if (this.value && newPassword !== this.value) {
+                showFieldError('confirmPassword', 'Passwords do not match');
+            } else {
+                clearFieldError('confirmPassword');
+            }
+        });
+    }
 }
 
 // Toggle Edit Mode
@@ -202,6 +234,35 @@ async function handleProfileUpdate(e) {
     saveBtn.textContent = 'Saving...';
 
     try {
+        // Track changes for audit trail
+        const changes = [];
+        const oldValues = {};
+        const newValues = {};
+
+        if (firstName !== (currentUserData.firstName || '')) {
+            oldValues.firstName = currentUserData.firstName || '';
+            newValues.firstName = firstName;
+            changes.push('First Name');
+        }
+
+        if (lastName !== (currentUserData.lastName || '')) {
+            oldValues.lastName = currentUserData.lastName || '';
+            newValues.lastName = lastName;
+            changes.push('Last Name');
+        }
+
+        if (username !== (currentUserData.username || '')) {
+            oldValues.username = currentUserData.username || '';
+            newValues.username = username;
+            changes.push('Username');
+        }
+
+        if (studentId !== (currentUserData.studentId || '')) {
+            oldValues.studentId = currentUserData.studentId || '';
+            newValues.studentId = studentId || null;
+            changes.push('Student ID');
+        }
+
         // Update user document in Firestore
         await db.collection('users').doc(currentUser.uid).update({
             firstName: firstName,
@@ -211,8 +272,18 @@ async function handleProfileUpdate(e) {
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // Log to audit trail
-        await logAuditTrail(currentUser.uid, 'update', 'Updated profile information');
+        // Log detailed changes to audit trail
+        if (changes.length > 0) {
+            await logAuditTrailDetailed(
+                currentUser.uid,
+                'update',
+                'profile',
+                `Updated profile: ${changes.join(', ')}`,
+                changes,
+                oldValues,
+                newValues
+            );
+        }
 
         // Reload profile data
         await loadProfile();
@@ -239,27 +310,36 @@ async function handlePasswordChange(e) {
     const newPassword = document.getElementById('newPassword').value;
     const confirmPassword = document.getElementById('confirmPassword').value;
 
-    // Validation
+    // Clear previous errors
+    clearFormErrors('passwordForm');
+
+    // Validate current password
     if (!currentPassword) {
         showFieldError('currentPassword', 'Current password is required');
         return;
     }
 
+    // Validate new password
     if (!newPassword) {
         showFieldError('newPassword', 'New password is required');
         return;
     }
 
-    if (newPassword.length < 6) {
-        showFieldError('newPassword', 'Password must be at least 6 characters long');
+    // Use password validator
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+        const errorMessage = getPasswordValidationErrorMessage(passwordValidation);
+        showFieldError('newPassword', errorMessage);
         return;
     }
 
+    // Check if passwords match
     if (newPassword !== confirmPassword) {
         showFieldError('confirmPassword', 'Passwords do not match');
         return;
     }
 
+    // Check if new password is different from current
     if (currentPassword === newPassword) {
         showFieldError('newPassword', 'New password must be different from current password');
         return;
@@ -281,8 +361,16 @@ async function handlePasswordChange(e) {
         // Update password
         await currentUser.updatePassword(newPassword);
 
-        // Log to audit trail
-        await logAuditTrail(currentUser.uid, 'update', 'Changed password');
+        // Log detailed password change to audit trail
+        await logAuditTrailDetailed(
+            currentUser.uid,
+            'update',
+            'password',
+            'Changed password',
+            ['Password'],
+            { password: '[REDACTED]' },
+            { password: '[REDACTED]' }
+        );
 
         // Clear form
         document.getElementById('passwordForm').reset();
@@ -360,6 +448,21 @@ function showFieldError(fieldId, message) {
     }
 }
 
+// Clear Field Error
+function clearFieldError(fieldId) {
+    const field = document.getElementById(fieldId);
+    const errorElement = document.getElementById(fieldId + 'Error');
+    
+    if (field) {
+        field.classList.remove('error');
+    }
+    
+    if (errorElement) {
+        errorElement.textContent = '';
+        errorElement.style.display = 'none';
+    }
+}
+
 // Log Audit Trail
 async function logAuditTrail(userId, action, details) {
     try {
@@ -372,6 +475,25 @@ async function logAuditTrail(userId, action, details) {
         });
     } catch (error) {
         console.error('Error logging audit trail:', error);
+    }
+}
+
+// Log Audit Trail with Detailed Field Changes
+async function logAuditTrailDetailed(userId, action, resourceType, details, changedFields, oldValues, newValues) {
+    try {
+        await db.collection('auditTrail').add({
+            userId: userId,
+            action: action,
+            resourceType: resourceType, // e.g., 'profile', 'password', 'email'
+            details: details,
+            changedFields: changedFields, // Array of field names that changed
+            oldValues: oldValues, // Object with old values
+            newValues: newValues, // Object with new values
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            ipAddress: await getClientIP()
+        });
+    } catch (error) {
+        console.error('Error logging detailed audit trail:', error);
     }
 }
 

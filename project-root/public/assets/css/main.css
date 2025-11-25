@@ -2068,6 +2068,78 @@ body:not(:has(.navbar))::before {
     margin-bottom: var(--space-md);
 }
 
+.timeline-resource {
+    font-size: var(--font-size-caption);
+    color: var(--color-text-secondary);
+    font-weight: 400;
+    margin-left: var(--space-xs);
+}
+
+.timeline-changes {
+    margin-top: var(--space-md);
+    padding: var(--space-md);
+    background: var(--color-bg-light);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--color-primary);
+}
+
+.changes-title {
+    display: block;
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.changes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.change-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: var(--space-xs) var(--space-sm);
+    background: var(--color-bg-white);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-caption);
+    flex-wrap: wrap;
+}
+
+.change-field {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    min-width: 100px;
+}
+
+.change-old {
+    color: var(--color-error);
+    text-decoration: line-through;
+    padding: 2px 6px;
+    background: rgba(192, 21, 48, 0.1);
+    border-radius: var(--radius-sm);
+}
+
+.change-arrow {
+    color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.change-new {
+    color: var(--color-success);
+    font-weight: 500;
+    padding: 2px 6px;
+    background: rgba(32, 164, 100, 0.1);
+    border-radius: var(--radius-sm);
+}
+
 .timeline-info {
     display: flex;
     gap: var(--space-lg);
@@ -3290,6 +3362,123 @@ body.landing-page {
         flex-direction: column;
         gap: var(--space-md);
     }
+}
+
+/* ============================================
+   Password Requirements Styles
+   ============================================ */
+
+.password-requirements {
+    margin-top: var(--space-md);
+    padding: var(--space-md);
+    background: var(--color-bg-light);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border);
+}
+
+.requirements-title {
+    font-size: var(--font-size-body);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 var(--space-sm) 0;
+}
+
+.requirements-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+}
+
+.requirement-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: var(--font-size-caption);
+    color: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.requirement-item .requirement-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    stroke: var(--color-text-secondary);
+    transition: all var(--transition-fast);
+}
+
+.requirement-item.valid {
+    color: var(--color-success);
+}
+
+.requirement-item.valid .requirement-icon {
+    stroke: var(--color-success);
+}
+
+.requirement-item.invalid {
+    color: var(--color-text-secondary);
+}
+
+.password-strength-meter {
+    margin-top: var(--space-md);
+    padding-top: var(--space-md);
+    border-top: 1px solid var(--color-border);
+}
+
+.strength-label {
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-xs);
+}
+
+.strength-label .strength-weak {
+    color: var(--color-error);
+}
+
+.strength-label .strength-fair {
+    color: var(--color-primary);
+}
+
+.strength-label .strength-good {
+    color: var(--color-info);
+}
+
+.strength-label .strength-strong {
+    color: var(--color-success);
+}
+
+.strength-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--color-bg-white);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.strength-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: all var(--transition-normal);
+}
+
+.strength-fill.strength-weak {
+    background: var(--color-error);
+}
+
+.strength-fill.strength-fair {
+    background: var(--color-primary);
+}
+
+.strength-fill.strength-good {
+    background: var(--color-info);
+}
+
+.strength-fill.strength-strong {
+    background: var(--color-success);
 }
 
 /* ============================================

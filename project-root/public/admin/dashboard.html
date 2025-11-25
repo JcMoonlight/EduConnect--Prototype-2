@@ -23,10 +23,10 @@
             </div>
             <div class="navbar-menu">
                 <a href="dashboard.html" class="navbar-item active">Dashboard</a>
-                <a href="events.html" class="navbar-item">Events</a>
-                <a href="attendance.html" class="navbar-item">Attendance</a>
+                <a href="events.html" class="navbar-item" id="eventsLink">Events</a>
+                <a href="attendance.html" class="navbar-item" id="attendanceLink">Attendance</a>
                 <a href="notifications.html" class="navbar-item">Notifications</a>
-                <a href="reports.html" class="navbar-item">Reports</a>
+                <a href="reports.html" class="navbar-item" id="reportsLink">Reports</a>
                 <a href="user-maintenance.html" class="navbar-item" id="userMaintenanceLink" style="display: none;">User Maintenance</a>
                 <a href="audit-trail.html" class="navbar-item" id="auditTrailLink" style="display: none;">Audit Trail</a>
                 <a href="profile.html" class="navbar-item">My Profile</a>
@@ -51,8 +51,8 @@
 
             <!-- Stats Widgets Grid -->
             <section class="widgets-grid">
-                <!-- Total Events Widget -->
-                <div class="widget widget-primary">
+                <!-- Total Events Widget (Admin Only) -->
+                <div class="widget widget-primary" id="eventsWidget">
                     <div class="widget-header">
                         <div class="widget-icon" style="background: rgba(237, 163, 6, 0.1);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2">
@@ -69,8 +69,8 @@
                     </div>
                 </div>
 
-                <!-- Upcoming Events Widget -->
-                <div class="widget widget-success">
+                <!-- Upcoming Events Widget (Admin Only) -->
+                <div class="widget widget-success" id="upcomingEventsWidget">
                     <div class="widget-header">
                         <div class="widget-icon" style="background: rgba(32, 164, 100, 0.1);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success)" stroke-width="2">
@@ -85,8 +85,8 @@
                     </div>
                 </div>
 
-                <!-- Total Attendance Logs Widget -->
-                <div class="widget widget-info">
+                <!-- Total Attendance Logs Widget (Admin Only) -->
+                <div class="widget widget-info" id="attendanceWidget">
                     <div class="widget-header">
                         <div class="widget-icon" style="background: rgba(96, 190, 144, 0.1);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-info)" stroke-width="2">
@@ -146,14 +146,14 @@
                     </div>
                     <div class="card-body">
                         <div class="quick-actions">
-                            <a href="events.html" class="action-btn action-primary">
+                            <a href="events.html" class="action-btn action-primary" id="createEventAction">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                 </svg>
                                 <span>Create Event</span>
                             </a>
-                            <a href="attendance.html" class="action-btn action-success">
+                            <a href="attendance.html" class="action-btn action-success" id="markAttendanceAction">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
@@ -167,7 +167,7 @@
                                 </svg>
                                 <span>Send Notification</span>
                             </a>
-                            <a href="reports.html" class="action-btn action-secondary">
+                            <a href="reports.html" class="action-btn action-secondary" id="generateReportAction">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                                 </svg>

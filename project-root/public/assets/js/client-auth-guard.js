@@ -1,9 +1,17 @@
 // Client-Specific Authentication Guard - Only for Customer Pages
 // This ensures Client Users can ONLY access customer pages and landing page
 
+let isCheckingAuth = false;
+let lastAuthCheck = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated
     auth.onAuthStateChanged(async function(user) {
+        // Prevent multiple simultaneous checks
+        if (isCheckingAuth) {
+            return;
+        }
+
         const currentPath = window.location.pathname;
         
         // Allow access to landing page without authentication
@@ -23,12 +31,22 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        // Prevent duplicate checks for the same user
+        const currentCheck = user.uid + currentPath;
+        if (lastAuthCheck === currentCheck) {
+            return;
+        }
+
+        isCheckingAuth = true;
+        lastAuthCheck = currentCheck;
+
         // User is logged in, verify role and access
         try {
             const userDoc = await db.collection('users').doc(user.uid).get();
             
             if (!userDoc.exists) {
                 // User document doesn't exist, sign out
+                isCheckingAuth = false;
                 await auth.signOut();
                 window.location.href = 'login.html';
                 return;
@@ -39,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // CRITICAL: Block Client Users from accessing ANY admin pages
             if (currentPath.includes('/admin/')) {
+                isCheckingAuth = false;
                 await auth.signOut();
                 sessionStorage.removeItem('user');
                 alert('Access denied. This area is restricted to administrators only.');
@@ -49,6 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // CRITICAL: Only Client Users can access customer pages
             if (currentPath.includes('/customer/')) {
                 if (userRole !== 'Client User') {
+                    isCheckingAuth = false;
                     await auth.signOut();
                     sessionStorage.removeItem('user');
                     alert('Access denied. This area is for students only.');
@@ -70,9 +90,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Update UI with user info
             updateClientUserInfo(userData, userRole);
+            isCheckingAuth = false;
 
         } catch (error) {
             console.error('Error checking client user access:', error);
+            
+            // Only sign out on critical errors, not network errors
+            const errorCode = error.code || error.message || '';
+            const isNetworkError = errorCode.includes('network') || 
+                                  errorCode.includes('unavailable') ||
+                                  errorCode.includes('failed-precondition') ||
+                                  errorCode === 'unavailable';
+            
+            if (isNetworkError) {
+                // Network error - don't sign out, just log and retry
+                console.warn('Network error during auth check, will retry on next auth state change');
+                isCheckingAuth = false;
+                return;
+            }
+            
+            // Critical error - sign out
+            isCheckingAuth = false;
             await auth.signOut();
             sessionStorage.removeItem('user');
             window.location.href = 'login.html';
@@ -122,8 +160,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     await auth.signOut();
                     sessionStorage.removeItem('user');
                     
-                    // Redirect to customer login
-                    window.location.href = 'login.html';
+                    // Redirect to landing page (index.html)
+                    window.location.href = '../../index.html';
                 } catch (error) {
                     console.error('Logout error:', error);
                     alert('Error logging out. Please try again.');

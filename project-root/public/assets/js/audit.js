@@ -248,6 +248,34 @@ function createTimelineItem(record, index) {
             actionColor = 'var(--color-text-secondary)';
     }
 
+    // Build detailed changes display if available
+    let changesHTML = '';
+    if (record.changedFields && record.changedFields.length > 0 && record.oldValues && record.newValues) {
+        changesHTML = '<div class="timeline-changes">';
+        changesHTML += '<strong class="changes-title">Changed Fields:</strong><ul class="changes-list">';
+        
+        record.changedFields.forEach(field => {
+            // Try different field name formats
+            const fieldKey = field.toLowerCase().replace(/\s+/g, '');
+            const fieldKeyAlt = field.toLowerCase().replace(/\s+/g, '_');
+            const oldVal = record.oldValues[fieldKey] || record.oldValues[fieldKeyAlt] || record.oldValues[field] || 'N/A';
+            const newVal = record.newValues[fieldKey] || record.newValues[fieldKeyAlt] || record.newValues[field] || 'N/A';
+            
+            // Format display values (hide sensitive data)
+            const displayOld = (oldVal === '[REDACTED]' || field.toLowerCase().includes('password')) ? '[REDACTED]' : (oldVal || 'N/A');
+            const displayNew = (newVal === '[REDACTED]' || field.toLowerCase().includes('password')) ? '[REDACTED]' : (newVal || 'N/A');
+            
+            changesHTML += `<li class="change-item">
+                <span class="change-field">${field}:</span>
+                <span class="change-old">${displayOld}</span>
+                <span class="change-arrow">→</span>
+                <span class="change-new">${displayNew}</span>
+            </li>`;
+        });
+        
+        changesHTML += '</ul></div>';
+    }
+
     item.innerHTML = `
         <div class="timeline-line"></div>
         <div class="timeline-node" style="background: ${actionColor};">
@@ -258,6 +286,7 @@ function createTimelineItem(record, index) {
                 <div class="timeline-action">
                     <span class="action-badge ${actionClass}">${actionLabel.toUpperCase()}</span>
                     <span class="timeline-user">${userName}</span>
+                    ${record.resourceType ? `<span class="timeline-resource">(${record.resourceType})</span>` : ''}
                 </div>
                 <div class="timeline-meta">
                     <span class="timeline-date">${dateStr}</span>
@@ -266,6 +295,7 @@ function createTimelineItem(record, index) {
             </div>
             <div class="timeline-body">
                 <p class="timeline-details">${record.details || 'No details available'}</p>
+                ${changesHTML}
                 <div class="timeline-info">
                     <span class="info-item">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
