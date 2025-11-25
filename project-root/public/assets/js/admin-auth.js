@@ -10,16 +10,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
     const loginError = document.getElementById('loginError');
+    const passwordToggle = document.getElementById('passwordToggle');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const eyeOffIcon = document.getElementById('eyeOffIcon');
 
     // Set max lengths
     emailInput.setAttribute('maxlength', '100');
     passwordInput.setAttribute('maxlength', '50');
+
+    // Password toggle functionality
+    if (passwordToggle) {
+        passwordToggle.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'text') {
+                eyeIcon.style.display = 'none';
+                eyeOffIcon.style.display = 'block';
+            } else {
+                eyeIcon.style.display = 'block';
+                eyeOffIcon.style.display = 'none';
+            }
+        });
+    }
 
     // Clear error messages
     function clearErrors() {
         emailError.textContent = '';
         passwordError.textContent = '';
         loginError.textContent = '';
+        loginError.style.display = 'none';
         emailInput.classList.remove('error');
         passwordInput.classList.remove('error');
     }
@@ -120,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch (error) {
             console.error('Login error:', error);
             loginError.textContent = getErrorMessage(error);
+            loginError.style.display = 'block';
             loginBtn.disabled = false;
             loginBtn.textContent = 'Login';
         }

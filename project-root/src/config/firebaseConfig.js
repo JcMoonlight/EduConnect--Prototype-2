@@ -1,15 +1,15 @@
 // Firebase configuration
-// Replace these values with your actual Firebase project credentials
+// EduConnect Firebase Project Configuration
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyB-ttA0Wanu5FlGD-pKV6kADqvOphEc_rA",
+  authDomain: "educonnect-6dbc6.firebaseapp.com",
+  projectId: "educonnect-6dbc6",
+  storageBucket: "educonnect-6dbc6.firebasestorage.app",
+  messagingSenderId: "908642658470",
+  appId: "1:908642658470:web:cac53595fe21df53076c67"
 };
 
-// Initialize Firebase
+// Initialize Firebase (using compat SDK for compatibility with existing code)
 firebase.initializeApp(firebaseConfig);
 
 // Initialize Firebase services
