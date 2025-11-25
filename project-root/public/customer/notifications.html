@@ -41,14 +41,52 @@
             <!-- Page Header -->
             <section class="page-header">
                 <div class="page-header-content">
-                    <h1 class="page-title">Notifications</h1>
-                    <p class="page-subtitle">View your notifications and updates</p>
+                    <div>
+                        <h1 class="page-title">Notifications</h1>
+                        <p class="page-subtitle">View your notifications and updates</p>
+                    </div>
+                    <div class="notification-stats">
+                        <span class="stat-item">
+                            <span class="stat-label">Unread:</span>
+                            <span class="stat-value" id="unreadCount">0</span>
+                        </span>
+                        <span class="stat-item">
+                            <span class="stat-label">Total:</span>
+                            <span class="stat-value" id="totalCount">0</span>
+                        </span>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" id="markAllReadBtn" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    Mark All as Read
+                </button>
+            </section>
+
+            <!-- Filters -->
+            <section class="notification-filters">
+                <div class="filter-tabs">
+                    <button class="filter-tab active" data-filter="all">All</button>
+                    <button class="filter-tab" data-filter="unread">Unread</button>
+                    <button class="filter-tab" data-filter="read">Read</button>
+                </div>
+                <div class="filter-type">
+                    <select id="typeFilter" class="filter-select">
+                        <option value="">All Types</option>
+                        <option value="attendance_alert">Attendance Alerts</option>
+                        <option value="event_reminder">Event Reminders</option>
+                        <option value="system_update">System Updates</option>
+                    </select>
                 </div>
             </section>
 
             <!-- Notifications List -->
-            <section class="notifications-list" id="notificationsList">
-                <div class="table-loading">Loading notifications...</div>
+            <section class="notifications-container">
+                <div class="notifications-list" id="notificationsList">
+                    <div class="table-loading">Loading notifications...</div>
+                </div>
             </section>
         </div>
     </main>
