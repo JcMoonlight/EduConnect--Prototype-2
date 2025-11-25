@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduConnect - Notifications</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="../assets/images/educonnect-logo.png" alt="EduConnect Logo" class="navbar-logo" />
+                <span class="navbar-title">EduConnect</span>
+            </div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="navbar-item">Dashboard</a>
+                <a href="events.html" class="navbar-item">Events</a>
+                <a href="attendance.html" class="navbar-item">Attendance</a>
+                <a href="notifications.html" class="navbar-item active">Notifications</a>
+                <a href="reports.html" class="navbar-item">Reports</a>
+                <a href="user-maintenance.html" class="navbar-item" id="userMaintenanceLink" style="display: none;">User Maintenance</a>
+                <a href="audit-trail.html" class="navbar-item" id="auditTrailLink" style="display: none;">Audit Trail</a>
+                <a href="profile.html" class="navbar-item">My Profile</a>
+            </div>
+            <div class="navbar-user">
+                <span class="user-name" id="userName">Admin</span>
+                <button class="btn-logout" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Page Header -->
+            <section class="page-header">
+                <div class="page-header-content">
+                    <h1 class="page-title">Notifications</h1>
+                    <p class="page-subtitle">Send and manage notifications to students and users</p>
+                </div>
+                <button class="btn btn-primary" id="sendNotificationBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Send Notification
+                </button>
+            </section>
+
+            <!-- Notifications List -->
+            <section class="table-section">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="table-search">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="searchInput" placeholder="Search notifications..." />
+                        </div>
+                        <div class="table-filters">
+                            <select id="typeFilter" class="filter-select">
+                                <option value="">All Types</option>
+                                <option value="attendance_alert">Attendance Alert</option>
+                                <option value="event_reminder">Event Reminder</option>
+                                <option value="system_update">System Update</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table class="data-table" id="notificationsTable">
+                            <thead>
+                                <tr>
+                                    <th>Message</th>
+                                    <th>Type</th>
+                                    <th>Recipients</th>
+                                    <th>Date Sent</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="notificationsTableBody">
+                                <tr>
+                                    <td colspan="5" class="table-loading">Loading notifications...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-pagination" id="notificationsPagination" style="display: none;">
+                        <button class="pagination-btn" id="notificationsPrevBtn" disabled>Previous</button>
+                        <span class="pagination-info" id="notificationsPaginationInfo">Page 1 of 1</span>
+                        <button class="pagination-btn" id="notificationsNextBtn" disabled>Next</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Send Notification Modal -->
+    <div class="modal" id="notificationModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Send Notification</h3>
+                <button class="modal-close" id="closeModalBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="notificationForm" class="modal-body">
+                <div class="form-group">
+                    <label for="message">Message *</label>
+                    <textarea id="message" name="message" rows="4" required maxlength="500" placeholder="Enter notification message..."></textarea>
+                    <span class="error-message" id="messageError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="type">Type *</label>
+                    <select id="type" name="type" required>
+                        <option value="">Select type</option>
+                        <option value="attendance_alert">Attendance Alert</option>
+                        <option value="event_reminder">Event Reminder</option>
+                        <option value="system_update">System Update</option>
+                    </select>
+                    <span class="error-message" id="typeError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="targetUsers">Recipients *</label>
+                    <div class="recipients-selector">
+                        <div class="recipients-options">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="selectAllUsers" />
+                                <span>Select All Users</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="selectAllStudents" />
+                                <span>All Students</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="selectAllAdmins" />
+                                <span>All Administrators</span>
+                            </label>
+                        </div>
+                        <div class="users-list" id="usersList">
+                            <p>Loading users...</p>
+                        </div>
+                    </div>
+                    <span class="error-message" id="targetUsersError"></span>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Send Notification</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3 class="modal-title">Delete Notification</h3>
+                <button class="modal-close" id="closeDeleteModalBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-message">Are you sure you want to delete this notification?</p>
+                <p class="delete-warning">This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Notification</button>
+                    <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Firebase Config -->
+    <script src="../../src/config/firebaseConfig.js"></script>
+    <!-- Load Auth Guard -->
+    <script src="../assets/js/auth-guard.js"></script>
+    <!-- Load Notifications Script -->
+    <script src="../assets/js/notifications.js"></script>
+</body>
+</html>
+

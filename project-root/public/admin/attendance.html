@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduConnect - Attendance Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="../assets/images/educonnect-logo.png" alt="EduConnect Logo" class="navbar-logo" />
+                <span class="navbar-title">EduConnect</span>
+            </div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="navbar-item">Dashboard</a>
+                <a href="events.html" class="navbar-item">Events</a>
+                <a href="attendance.html" class="navbar-item active">Attendance</a>
+                <a href="notifications.html" class="navbar-item">Notifications</a>
+                <a href="reports.html" class="navbar-item">Reports</a>
+                <a href="user-maintenance.html" class="navbar-item" id="userMaintenanceLink" style="display: none;">User Maintenance</a>
+                <a href="audit-trail.html" class="navbar-item" id="auditTrailLink" style="display: none;">Audit Trail</a>
+                <a href="profile.html" class="navbar-item">My Profile</a>
+            </div>
+            <div class="navbar-user">
+                <span class="user-name" id="userName">Admin</span>
+                <button class="btn-logout" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Page Header -->
+            <section class="page-header">
+                <div class="page-header-content">
+                    <h1 class="page-title">Attendance Management</h1>
+                    <p class="page-subtitle">View and manage student attendance records</p>
+                </div>
+                <button class="btn btn-primary" id="markAttendanceBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Mark Attendance
+                </button>
+            </section>
+
+            <!-- Attendance Table -->
+            <section class="table-section">
+                <div class="table-card">
+                    <div class="table-header">
+                        <div class="table-search">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="m21 21-4.35-4.35"></path>
+                            </svg>
+                            <input type="text" id="searchInput" placeholder="Search by student name, event..." />
+                        </div>
+                        <div class="table-filters">
+                            <select id="eventFilter" class="filter-select">
+                                <option value="">All Events</option>
+                            </select>
+                            <select id="statusFilter" class="filter-select">
+                                <option value="">All Status</option>
+                                <option value="present">Present</option>
+                                <option value="absent">Absent</option>
+                                <option value="late">Late</option>
+                                <option value="excused">Excused</option>
+                            </select>
+                            <input type="date" id="dateFrom" class="filter-input" placeholder="Date From" />
+                            <input type="date" id="dateTo" class="filter-input" placeholder="Date To" />
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table class="data-table" id="attendanceTable">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Event</th>
+                                    <th>Date & Time</th>
+                                    <th>Status</th>
+                                    <th>Recorded By</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody">
+                                <tr>
+                                    <td colspan="6" class="table-loading">Loading attendance records...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="table-pagination" id="attendancePagination" style="display: none;">
+                        <button class="pagination-btn" id="attendancePrevBtn" disabled>Previous</button>
+                        <span class="pagination-info" id="attendancePaginationInfo">Page 1 of 1</span>
+                        <button class="pagination-btn" id="attendanceNextBtn" disabled>Next</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Mark Attendance Modal -->
+    <div class="modal" id="attendanceModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Mark Attendance</h3>
+                <button class="modal-close" id="closeModalBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="attendanceForm" class="modal-body">
+                <input type="hidden" id="logId" />
+                <input type="hidden" id="isEditMode" value="false" />
+
+                <div class="form-group">
+                    <label for="eventId">Event *</label>
+                    <select id="eventId" name="eventId" required>
+                        <option value="">Select an event</option>
+                    </select>
+                    <span class="error-message" id="eventIdError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="userId">Student *</label>
+                    <select id="userId" name="userId" required>
+                        <option value="">Select a student</option>
+                    </select>
+                    <span class="error-message" id="userIdError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status *</label>
+                    <select id="status" name="status" required>
+                        <option value="">Select status</option>
+                        <option value="present">Present</option>
+                        <option value="absent">Absent</option>
+                        <option value="late">Late</option>
+                        <option value="excused">Excused</option>
+                    </select>
+                    <span class="error-message" id="statusError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="timestamp">Date & Time *</label>
+                    <input type="datetime-local" id="timestamp" name="timestamp" required />
+                    <span class="error-message" id="timestampError"></span>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes (Optional)</label>
+                    <textarea id="notes" name="notes" rows="3" maxlength="200"></textarea>
+                    <span class="error-message" id="notesError"></span>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary" id="submitBtn">Save Attendance</button>
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3 class="modal-title">Delete Attendance Record</h3>
+                <button class="modal-close" id="closeDeleteModalBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="delete-message">Are you sure you want to delete this attendance record?</p>
+                <p class="delete-warning">This action cannot be undone.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete Record</button>
+                    <button type="button" class="btn btn-secondary" id="cancelDeleteBtn">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load Firebase Config -->
+    <script src="../../src/config/firebaseConfig.js"></script>
+    <!-- Load Auth Guard -->
+    <script src="../assets/js/auth-guard.js"></script>
+    <!-- Load Attendance Script -->
+    <script src="../assets/js/attendance.js"></script>
+</body>
+</html>
+

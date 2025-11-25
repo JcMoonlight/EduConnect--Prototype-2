@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduConnect - Events</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="../assets/images/educonnect-logo.png" alt="EduConnect Logo" class="navbar-logo" />
+                <span class="navbar-title">EduConnect</span>
+            </div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="navbar-item">Dashboard</a>
+                <a href="events.html" class="navbar-item active">Events</a>
+                <a href="attendance.html" class="navbar-item">My Attendance</a>
+                <a href="notifications.html" class="navbar-item">Notifications</a>
+                <a href="profile.html" class="navbar-item">Profile</a>
+            </div>
+            <div class="navbar-user">
+                <span class="user-name" id="userName">Student</span>
+                <button class="btn-logout" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Page Header -->
+            <section class="page-header">
+                <div class="page-header-content">
+                    <h1 class="page-title">Events</h1>
+                    <p class="page-subtitle">View upcoming and past school events</p>
+                </div>
+            </section>
+
+            <!-- Events Grid -->
+            <section class="events-grid" id="eventsGrid">
+                <div class="table-loading">Loading events...</div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Load Firebase Config -->
+    <script src="../../src/config/firebaseConfig.js"></script>
+    <!-- Load Client Auth Guard -->
+    <script src="../assets/js/client-auth-guard.js"></script>
+    <!-- Load Events Script -->
+    <script src="../assets/js/client-events.js"></script>
+</body>
+</html>
+
