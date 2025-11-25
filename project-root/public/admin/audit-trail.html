@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduConnect - Audit Trail</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="../assets/images/educonnect-logo.png" alt="EduConnect Logo" class="navbar-logo" />
+                <span class="navbar-title">EduConnect</span>
+            </div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="navbar-item">Dashboard</a>
+                <a href="user-maintenance.html" class="navbar-item" id="userMaintenanceLink" style="display: none;">User Maintenance</a>
+                <a href="audit-trail.html" class="navbar-item active">Audit Trail</a>
+                <a href="profile.html" class="navbar-item">My Profile</a>
+            </div>
+            <div class="navbar-user">
+                <span class="user-name" id="userName">Super Admin</span>
+                <button class="btn-logout" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Page Header -->
+            <section class="page-header">
+                <div class="page-header-content">
+                    <h1 class="page-title">Audit Trail</h1>
+                    <p class="page-subtitle">Complete history of all user activities and system changes</p>
+                </div>
+                <button class="btn btn-secondary" id="exportBtn" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Export Data
+                </button>
+            </section>
+
+            <!-- Filters Section -->
+            <section class="filters-section">
+                <div class="filters-card">
+                    <div class="filters-header">
+                        <h3 class="filters-title">Filter Records</h3>
+                        <button class="btn-filter-clear" id="clearFilters">Clear All</button>
+                    </div>
+                    <div class="filters-grid">
+                        <div class="filter-group">
+                            <label for="dateFrom">Date From</label>
+                            <input type="date" id="dateFrom" class="filter-input" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="dateTo">Date To</label>
+                            <input type="date" id="dateTo" class="filter-input" />
+                        </div>
+                        <div class="filter-group">
+                            <label for="userFilter">User</label>
+                            <select id="userFilter" class="filter-select">
+                                <option value="">All Users</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="actionFilter">Action Type</label>
+                            <select id="actionFilter" class="filter-select">
+                                <option value="">All Actions</option>
+                                <option value="login">Login</option>
+                                <option value="logout">Logout</option>
+                                <option value="create">Create</option>
+                                <option value="update">Update</option>
+                                <option value="delete">Delete</option>
+                                <option value="view">View</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit Trail Timeline -->
+            <section class="audit-section">
+                <div class="audit-card">
+                    <div class="audit-header">
+                        <h3 class="audit-title">Activity Timeline</h3>
+                        <div class="audit-stats">
+                            <span class="stat-item" id="totalRecords">Total: 0</span>
+                            <span class="stat-item" id="filteredRecords">Showing: 0</span>
+                        </div>
+                    </div>
+                    <div class="timeline-container" id="timelineContainer">
+                        <div class="timeline-loading">Loading audit records...</div>
+                    </div>
+                    <div class="timeline-pagination" id="timelinePagination" style="display: none;">
+                        <button class="pagination-btn" id="timelinePrevBtn" disabled>Previous</button>
+                        <span class="pagination-info" id="timelinePaginationInfo">Page 1 of 1</span>
+                        <button class="pagination-btn" id="timelineNextBtn" disabled>Next</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Load Firebase Config -->
+    <script src="../../src/config/firebaseConfig.js"></script>
+    <!-- Load Auth Guard -->
+    <script src="../assets/js/auth-guard.js"></script>
+    <!-- Load Audit Trail Script -->
+    <script src="../assets/js/audit.js"></script>
+</body>
+</html>
+

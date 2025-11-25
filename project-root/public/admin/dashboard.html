@@ -23,8 +23,9 @@
             </div>
             <div class="navbar-menu">
                 <a href="dashboard.html" class="navbar-item active">Dashboard</a>
-                <a href="user-maintenance.html" class="navbar-item">User Maintenance</a>
+                <a href="user-maintenance.html" class="navbar-item" id="userMaintenanceLink" style="display: none;">User Maintenance</a>
                 <a href="audit-trail.html" class="navbar-item" id="auditTrailLink" style="display: none;">Audit Trail</a>
+                <a href="profile.html" class="navbar-item">My Profile</a>
             </div>
             <div class="navbar-user">
                 <span class="user-name" id="userName">Admin</span>
@@ -140,7 +141,7 @@
                     </div>
                     <div class="card-body">
                         <div class="quick-actions">
-                            <a href="user-maintenance.html" class="action-btn action-primary">
+                            <a href="user-maintenance.html" class="action-btn action-primary" id="addUserActionBtn" style="display: none;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                     <circle cx="8.5" cy="7" r="4"></circle>
@@ -149,7 +150,7 @@
                                 </svg>
                                 <span>Add New User</span>
                             </a>
-                            <a href="user-maintenance.html" class="action-btn action-secondary">
+                            <a href="user-maintenance.html" class="action-btn action-secondary" id="manageUsersActionBtn" style="display: none;">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                     <circle cx="9" cy="7" r="4"></circle>
@@ -163,6 +164,13 @@
                                     <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                                 </svg>
                                 <span>View Audit Trail</span>
+                            </a>
+                            <a href="profile.html" class="action-btn action-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="12" cy="7" r="4"></circle>
+                                </svg>
+                                <span>My Profile</span>
                             </a>
                         </div>
                     </div>

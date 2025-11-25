@@ -70,10 +70,6 @@
                     <button type="button" id="resetBtn" class="btn btn-secondary">Clear</button>
                     <button type="button" id="exitBtn" class="btn btn-danger">Exit</button>
                 </div>
-                
-                <div class="login-footer">
-                    <p>Not a student? <a href="../admin/login.html">Admin Login</a></p>
-                </div>
             </form>
             </div>
         </div>
@@ -81,6 +77,8 @@
 
     <!-- Load Firebase Config -->
     <script src="../../src/config/firebaseConfig.js"></script>
+    <!-- Load Login Guard (prevents admins from accessing student login) -->
+    <script src="../assets/js/login-guard.js"></script>
     <!-- Load Student Auth Script -->
     <script src="../assets/js/student-auth.js"></script>
 </body>

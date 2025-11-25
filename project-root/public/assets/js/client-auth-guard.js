@@ -1,18 +1,25 @@
-// Authentication Guard - For Admin Pages Only
-// This guard is ONLY used on admin pages and blocks Client Users completely
+// Client-Specific Authentication Guard - Only for Customer Pages
+// This ensures Client Users can ONLY access customer pages and landing page
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated
     auth.onAuthStateChanged(async function(user) {
         const currentPath = window.location.pathname;
         
-        // This guard only runs on admin pages
-        if (!currentPath.includes('/admin/')) {
-            return; // Let client-auth-guard.js handle customer pages
+        // Allow access to landing page without authentication
+        if (currentPath === '/index.html' || currentPath.endsWith('/index.html') || 
+            currentPath === '/' || currentPath.endsWith('/')) {
+            return; // Landing page is public
         }
 
         if (!user) {
-            // User is not logged in, redirect to admin login
-            window.location.href = 'login.html';
+            // User is not logged in, redirect to customer login
+            if (currentPath.includes('/customer/')) {
+                window.location.href = 'login.html';
+            } else {
+                // If somehow on admin page, redirect to customer login
+                window.location.href = '../customer/login.html';
+            }
             return;
         }
 
@@ -23,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!userDoc.exists) {
                 // User document doesn't exist, sign out
                 await auth.signOut();
-                sessionStorage.removeItem('user');
                 window.location.href = 'login.html';
                 return;
             }
@@ -31,22 +37,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const userData = userDoc.data();
             const userRole = userData.role || 'Client User';
 
-            // CRITICAL SECURITY: Block Client Users from ALL admin pages
-            if (userRole === 'Client User') {
+            // CRITICAL: Block Client Users from accessing ANY admin pages
+            if (currentPath.includes('/admin/')) {
                 await auth.signOut();
                 sessionStorage.removeItem('user');
-                alert('Access denied. This area is restricted to administrators only. Client users can only access the student portal.');
+                alert('Access denied. This area is restricted to administrators only.');
                 window.location.href = '../customer/login.html';
                 return;
             }
 
-            // Admin pages - only Admin and Super Admin can access
-            if (userRole !== 'Admin' && userRole !== 'Super Admin') {
-                await auth.signOut();
-                sessionStorage.removeItem('user');
-                alert('Access denied. This area is for administrators only.');
-                window.location.href = 'login.html';
-                return;
+            // CRITICAL: Only Client Users can access customer pages
+            if (currentPath.includes('/customer/')) {
+                if (userRole !== 'Client User') {
+                    await auth.signOut();
+                    sessionStorage.removeItem('user');
+                    alert('Access denied. This area is for students only.');
+                    window.location.href = '../admin/login.html';
+                    return;
+                }
             }
 
             // Store user data in sessionStorage
@@ -56,28 +64,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 role: userRole,
                 username: userData.username || user.email,
                 firstName: userData.firstName || '',
-                lastName: userData.lastName || ''
+                lastName: userData.lastName || '',
+                studentId: userData.studentId || ''
             }));
 
-            // Check for Super Admin only pages
-            if (currentPath.includes('audit-trail.html') && userRole !== 'Super Admin') {
-                alert('Access denied. Audit Trail is only accessible to Super Administrators.');
-                window.location.href = 'dashboard.html';
-                return;
-            }
-
-            // Check for User Maintenance - only Super Admin can access
-            if (currentPath.includes('user-maintenance.html') && userRole !== 'Super Admin') {
-                alert('Access denied. User Maintenance is only accessible to Super Administrators.');
-                window.location.href = 'dashboard.html';
-                return;
-            }
-
             // Update UI with user info
-            updateUserInfo(userData, userRole);
+            updateClientUserInfo(userData, userRole);
 
         } catch (error) {
-            console.error('Error checking user access:', error);
+            console.error('Error checking client user access:', error);
             await auth.signOut();
             sessionStorage.removeItem('user');
             window.location.href = 'login.html';
@@ -85,40 +80,22 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Update user information in the UI
-function updateUserInfo(userData, userRole) {
+// Update user information in the UI (Client-specific)
+function updateClientUserInfo(userData, userRole) {
     // Wait for DOM to be ready
     setTimeout(function() {
         const userNameElements = document.querySelectorAll('#userName, #welcomeName');
         const displayName = userData.firstName 
             ? `${userData.firstName} ${userData.lastName || ''}`.trim()
-            : userData.username || userData.email || 'User';
+            : userData.username || userData.email || 'Student';
 
         userNameElements.forEach(el => {
             if (el) el.textContent = displayName;
         });
-
-        // Show/hide Super Admin only elements
-        if (userRole === 'Super Admin') {
-            const superAdminElements = document.querySelectorAll('#auditTrailLink, #viewAllLink, #auditActionBtn, #userMaintenanceLink, #addUserActionBtn, #manageUsersActionBtn');
-            superAdminElements.forEach(el => {
-                if (el) {
-                    el.style.display = 'block';
-                }
-            });
-        } else {
-            // Hide Super Admin elements for regular admins
-            const superAdminElements = document.querySelectorAll('#auditTrailLink, #viewAllLink, #auditActionBtn, #userMaintenanceLink, #addUserActionBtn, #manageUsersActionBtn');
-            superAdminElements.forEach(el => {
-                if (el) {
-                    el.style.display = 'none';
-                }
-            });
-        }
     }, 100);
 }
 
-// Logout functionality
+// Logout functionality for client users
 document.addEventListener('DOMContentLoaded', function() {
     const logoutBtn = document.getElementById('logoutBtn');
     
@@ -133,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             await db.collection('auditTrail').add({
                                 userId: user.uid,
                                 action: 'logout',
-                                details: 'User logged out successfully',
+                                details: 'Student logged out successfully',
                                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                                 ipAddress: await getClientIP()
                             });
@@ -145,13 +122,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     await auth.signOut();
                     sessionStorage.removeItem('user');
                     
-                    // Redirect to appropriate login page
-                    const currentPath = window.location.pathname;
-                    if (currentPath.includes('/admin/')) {
-                        window.location.href = 'login.html';
-                    } else {
-                        window.location.href = 'login.html';
-                    }
+                    // Redirect to customer login
+                    window.location.href = 'login.html';
                 } catch (error) {
                     console.error('Logout error:', error);
                     alert('Error logging out. Please try again.');
