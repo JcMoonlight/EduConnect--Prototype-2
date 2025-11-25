@@ -429,18 +429,78 @@ async function handleFormSubmit(e) {
 
 // Create Event
 async function createEvent(eventData) {
-    await db.collection('events').add(eventData);
+    const eventRef = await db.collection('events').add(eventData);
+    const eventId = eventRef.id;
 
-    // Log to audit trail
-    await logAuditTrail(currentUser.uid, 'create', `Created event: ${eventData.eventName}`);
+    // Log detailed event creation to audit trail
+    await logAuditTrailDetailed(
+        currentUser.uid,
+        'create',
+        'event',
+        `Created event: ${eventData.eventName}`,
+        ['Event Name', 'Description', 'Date/Time', 'Location'],
+        {},
+        {
+            eventName: eventData.eventName,
+            description: eventData.description || 'N/A',
+            dateTime: eventData.dateTime ? eventData.dateTime.toDate().toLocaleString() : 'N/A',
+            location: eventData.location || 'N/A'
+        }
+    );
 }
 
 // Update Event
 async function updateEvent(eventId, eventData) {
+    // Get existing event data for comparison
+    const existingEventDoc = await db.collection('events').doc(eventId).get();
+    const existingEvent = existingEventDoc.exists ? existingEventDoc.data() : {};
+    
     await db.collection('events').doc(eventId).update(eventData);
 
-    // Log to audit trail
-    await logAuditTrail(currentUser.uid, 'update', `Updated event: ${eventData.eventName}`);
+    // Track changes for audit trail
+    const changes = [];
+    const oldValues = {};
+    const newValues = {};
+
+    if (eventData.eventName && eventData.eventName !== existingEvent.eventName) {
+        oldValues.eventName = existingEvent.eventName || 'N/A';
+        newValues.eventName = eventData.eventName;
+        changes.push('Event Name');
+    }
+
+    if (eventData.description && eventData.description !== existingEvent.description) {
+        oldValues.description = existingEvent.description || 'N/A';
+        newValues.description = eventData.description;
+        changes.push('Description');
+    }
+
+    if (eventData.dateTime && eventData.dateTime.toMillis() !== existingEvent.dateTime?.toMillis()) {
+        oldValues.dateTime = existingEvent.dateTime ? existingEvent.dateTime.toDate().toLocaleString() : 'N/A';
+        newValues.dateTime = eventData.dateTime.toDate().toLocaleString();
+        changes.push('Date/Time');
+    }
+
+    if (eventData.location && eventData.location !== existingEvent.location) {
+        oldValues.location = existingEvent.location || 'N/A';
+        newValues.location = eventData.location;
+        changes.push('Location');
+    }
+
+    // Log detailed update to audit trail
+    if (changes.length > 0) {
+        await logAuditTrailDetailed(
+            currentUser.uid,
+            'update',
+            'event',
+            `Updated event: ${eventData.eventName || existingEvent.eventName} - ${changes.join(', ')}`,
+            changes,
+            oldValues,
+            newValues
+        );
+    } else {
+        // Fallback to simple log if no changes detected
+        await logAuditTrail(currentUser.uid, 'update', `Updated event: ${eventData.eventName || existingEvent.eventName}`);
+    }
 }
 
 // Confirm Delete
@@ -546,6 +606,25 @@ async function logAuditTrail(userId, action, details) {
         });
     } catch (error) {
         console.error('Error logging audit trail:', error);
+    }
+}
+
+// Log Audit Trail with Detailed Field Changes
+async function logAuditTrailDetailed(userId, action, resourceType, details, changedFields, oldValues, newValues) {
+    try {
+        await db.collection('auditTrail').add({
+            userId: userId,
+            action: action,
+            resourceType: resourceType, // e.g., 'event', 'profile', 'password'
+            details: details,
+            changedFields: changedFields, // Array of field names that changed
+            oldValues: oldValues, // Object with old values
+            newValues: newValues, // Object with new values
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            ipAddress: await getClientIP()
+        });
+    } catch (error) {
+        console.error('Error logging detailed audit trail:', error);
     }
 }
 
