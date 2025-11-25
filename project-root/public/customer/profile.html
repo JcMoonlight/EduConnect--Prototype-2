@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduConnect - My Profile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-brand">
+                <img src="../assets/images/educonnect-logo.png" alt="EduConnect Logo" class="navbar-logo" />
+                <span class="navbar-title">EduConnect</span>
+            </div>
+            <div class="navbar-menu">
+                <a href="dashboard.html" class="navbar-item">Dashboard</a>
+                <a href="events.html" class="navbar-item">Events</a>
+                <a href="attendance.html" class="navbar-item">My Attendance</a>
+                <a href="notifications.html" class="navbar-item">Notifications</a>
+                <a href="profile.html" class="navbar-item active">Profile</a>
+            </div>
+            <div class="navbar-user">
+                <span class="user-name" id="userName">Student</span>
+                <button class="btn-logout" id="logoutBtn">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+        <div class="dashboard-container">
+            <!-- Page Header -->
+            <section class="page-header">
+                <div class="page-header-content">
+                    <h1 class="page-title">My Profile</h1>
+                    <p class="page-subtitle">View and manage your personal information</p>
+                </div>
+            </section>
+
+            <!-- Profile Card -->
+            <section class="profile-section">
+                <div class="profile-card">
+                    <div class="profile-header">
+                        <div class="profile-avatar">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </div>
+                        <div class="profile-info">
+                            <h2 class="profile-name" id="profileName">Loading...</h2>
+                            <p class="profile-role" id="profileRole">Student</p>
+                            <p class="profile-email" id="profileEmail">-</p>
+                        </div>
+                        <button class="btn btn-primary" id="editProfileBtn">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            Edit Profile
+                        </button>
+                    </div>
+
+                    <!-- Profile Details (View Mode) -->
+                    <div class="profile-details" id="profileDetails">
+                        <div class="detail-group">
+                            <label>First Name</label>
+                            <p id="displayFirstName">-</p>
+                        </div>
+                        <div class="detail-group">
+                            <label>Last Name</label>
+                            <p id="displayLastName">-</p>
+                        </div>
+                        <div class="detail-group">
+                            <label>Email</label>
+                            <p id="displayEmail">-</p>
+                        </div>
+                        <div class="detail-group">
+                            <label>Username</label>
+                            <p id="displayUsername">-</p>
+                        </div>
+                        <div class="detail-group">
+                            <label>Student ID</label>
+                            <p id="displayStudentId">-</p>
+                        </div>
+                        <div class="detail-group">
+                            <label>Status</label>
+                            <p id="displayStatus">-</p>
+                        </div>
+                    </div>
+
+                    <!-- Edit Form (Hidden by default) -->
+                    <form class="profile-form" id="profileForm" style="display: none;">
+                        <div class="form-group">
+                            <label for="firstName">First Name *</label>
+                            <input type="text" id="firstName" name="firstName" required maxlength="50" />
+                            <span class="error-message" id="firstNameError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="lastName">Last Name *</label>
+                            <input type="text" id="lastName" name="lastName" required maxlength="50" />
+                            <span class="error-message" id="lastNameError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" id="email" name="email" readonly />
+                            <small style="color: var(--color-text-secondary); margin-top: var(--space-xs); display: block;">
+                                Email cannot be changed. Contact administrator for email changes.
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="username">Username *</label>
+                            <input type="text" id="username" name="username" required maxlength="50" />
+                            <span class="error-message" id="usernameError"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="studentId">Student ID</label>
+                            <input type="text" id="studentId" name="studentId" maxlength="20" />
+                            <span class="error-message" id="studentIdError"></span>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="saveBtn">Save Changes</button>
+                            <button type="button" class="btn btn-secondary" id="cancelBtn">Cancel</button>
+                        </div>
+                    </form>
+
+                    <!-- Change Password Section -->
+                    <div class="password-section" style="margin-top: var(--space-xl); padding-top: var(--space-xl); border-top: 1px solid var(--color-border);">
+                        <h3 style="margin-bottom: var(--space-lg); color: var(--color-text-primary);">Change Password</h3>
+                        <form class="profile-form" id="passwordForm">
+                            <div class="form-group">
+                                <label for="currentPassword">Current Password *</label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="currentPassword" name="currentPassword" required />
+                                    <button type="button" class="password-toggle" id="toggleCurrentPassword">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="error-message" id="currentPasswordError"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="newPassword">New Password *</label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="newPassword" name="newPassword" required minlength="6" />
+                                    <button type="button" class="password-toggle" id="toggleNewPassword">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <small style="color: var(--color-text-secondary); margin-top: var(--space-xs); display: block;">
+                                    Password must be at least 6 characters long.
+                                </small>
+                                <span class="error-message" id="newPasswordError"></span>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="confirmPassword">Confirm New Password *</label>
+                                <div class="password-input-wrapper">
+                                    <input type="password" id="confirmPassword" name="confirmPassword" required minlength="6" />
+                                    <button type="button" class="password-toggle" id="toggleConfirmPassword">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <span class="error-message" id="confirmPasswordError"></span>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary" id="changePasswordBtn">Change Password</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Load Firebase Config -->
+    <script src="../../src/config/firebaseConfig.js"></script>
+    <!-- Load Client Auth Guard -->
+    <script src="../assets/js/client-auth-guard.js"></script>
+    <!-- Load Client Profile Script -->
+    <script src="../assets/js/client-profile.js"></script>
+</body>
+</html>
+
