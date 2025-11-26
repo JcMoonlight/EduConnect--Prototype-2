@@ -1,5 +1,6 @@
-// Login Page Guard - Prevents already logged-in users from accessing wrong login pages
-// This ensures Client Users can't access admin login pages and vice versa
+// Login Page Guard - Allows account switching and prevents wrong role access
+// Users can now log in with different accounts even if already logged in
+// This allows testing different roles simultaneously in different browser tabs/profiles
 
 document.addEventListener('DOMContentLoaded', function() {
     auth.onAuthStateChanged(async function(user) {
@@ -18,36 +19,36 @@ document.addEventListener('DOMContentLoaded', function() {
             const userRole = userData.role || 'Client User';
             const currentPath = window.location.pathname;
 
-            // Block Client Users from accessing admin login pages
-            if (currentPath.includes('/admin/login.html') || currentPath.includes('/admin/superadmin-login.html')) {
+            // Check if user is trying to access the wrong login portal for their role
+            // But allow them to proceed if they want to switch accounts
+            const isAdminLoginPage = currentPath.includes('/admin/login.html') || currentPath.includes('/admin/superadmin-login.html');
+            const isCustomerLoginPage = currentPath.includes('/customer/login.html');
+
+            // Only block access if user is on the wrong portal AND we detect they're not intentionally switching
+            // We'll show a warning but allow them to proceed
+            if (isAdminLoginPage) {
                 if (userRole === 'Client User') {
-                    await auth.signOut();
-                    sessionStorage.removeItem('user');
-                    alert('Access denied. This login portal is for administrators only. Please use the student login page.');
-                    window.location.href = '../customer/login.html';
+                    // Client user trying to access admin login - show warning but allow
+                    console.warn('Client User accessing admin login page - allowing for account switching');
+                    // Don't auto-redirect, allow them to log in with admin account
                     return;
                 }
-                // If admin/super admin is already logged in, redirect to their dashboard
-                if (userRole === 'Admin' || userRole === 'Super Admin') {
-                    window.location.href = 'dashboard.html';
-                    return;
-                }
+                // Admin/Super Admin on admin login page - allow them to switch accounts
+                // Don't auto-redirect to dashboard, let them log in with different account if needed
+                console.log('Admin user on admin login page - allowing account switching');
+                return;
             }
 
-            // Block Admins from accessing customer login page
-            if (currentPath.includes('/customer/login.html')) {
+            if (isCustomerLoginPage) {
                 if (userRole === 'Admin' || userRole === 'Super Admin') {
-                    await auth.signOut();
-                    sessionStorage.removeItem('user');
-                    alert('Access denied. This login portal is for students only. Please use the admin login page.');
-                    window.location.href = '../admin/login.html';
+                    // Admin trying to access customer login - show warning but allow
+                    console.warn('Admin accessing customer login page - allowing for account switching');
+                    // Don't auto-redirect, allow them to log in with customer account
                     return;
                 }
-                // If client user is already logged in, redirect to their dashboard
-                if (userRole === 'Client User') {
-                    window.location.href = 'dashboard.html';
-                    return;
-                }
+                // Client user on customer login page - allow them to switch accounts
+                console.log('Client user on customer login page - allowing account switching');
+                return;
             }
 
         } catch (error) {

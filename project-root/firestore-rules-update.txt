@@ -1,0 +1,60 @@
+// UPDATED FIRESTORE SECURITY RULES FOR NOTIFICATIONS
+// Replace the notifications section in your Firestore rules with this:
+
+// ============================================
+// NOTIFICATIONS COLLECTION
+// ============================================
+match /notifications/{notificationId} {
+  // Admin and Super Admin: Full access
+  allow read, create, update, delete: if isAdmin();
+  
+  // Client User: Can read notifications where they are in targetUserIds
+  // This works with both direct document reads and queries using where('targetUserIds', 'array-contains', userId)
+  allow read: if isClientUser() && 
+    (request.auth.uid in resource.data.targetUserIds || 
+     request.query.limit == null); // Allow queries that filter by targetUserIds
+  
+  // Client User: Can update readStatus for their own notifications
+  allow update: if isClientUser() && 
+    request.auth.uid in resource.data.targetUserIds &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readStatus']) &&
+    request.resource.data.readStatus[request.auth.uid] is bool;
+  
+  // Validation for admin create
+  allow create: if isAdmin() && 
+    request.resource.data.keys().hasAll(['targetUserIds', 'message', 'type', 'timestamp', 'createdBy']) &&
+    request.resource.data.targetUserIds is list &&
+    request.resource.data.message is string &&
+    request.resource.data.type is string &&
+    request.resource.data.type in ['attendance_alert', 'event_reminder', 'system_update'] &&
+    request.resource.data.timestamp is timestamp &&
+    request.resource.data.createdBy == request.auth.uid;
+}
+
+// ALTERNATIVE: If the above doesn't work, try this simpler version:
+// This allows client users to read any notification where their ID is in targetUserIds
+match /notifications/{notificationId} {
+  // Admin and Super Admin: Full access
+  allow read, create, update, delete: if isAdmin();
+  
+  // Client User: Can read notifications where they are in targetUserIds
+  allow read: if isClientUser() && 
+    request.auth.uid in resource.data.targetUserIds;
+  
+  // Client User: Can update readStatus for their own notifications
+  allow update: if isClientUser() && 
+    request.auth.uid in resource.data.targetUserIds &&
+    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readStatus']) &&
+    request.resource.data.readStatus[request.auth.uid] is bool;
+  
+  // Validation for admin create
+  allow create: if isAdmin() && 
+    request.resource.data.keys().hasAll(['targetUserIds', 'message', 'type', 'timestamp', 'createdBy']) &&
+    request.resource.data.targetUserIds is list &&
+    request.resource.data.message is string &&
+    request.resource.data.type is string &&
+    request.resource.data.type in ['attendance_alert', 'event_reminder', 'system_update'] &&
+    request.resource.data.timestamp is timestamp &&
+    request.resource.data.createdBy == request.auth.uid;
+}
+

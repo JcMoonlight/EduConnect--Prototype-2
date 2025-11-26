@@ -13,6 +13,48 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordToggle = document.getElementById('passwordToggle');
     const eyeIcon = document.getElementById('eyeIcon');
     const eyeOffIcon = document.getElementById('eyeOffIcon');
+    
+    // Check if user is already logged in and show notice
+    checkCurrentUser();
+    
+    // Switch Account button handler
+    const switchAccountBtn = document.getElementById('switchAccountBtn');
+    if (switchAccountBtn) {
+        switchAccountBtn.addEventListener('click', async function() {
+            if (confirm('Are you sure you want to switch accounts? This will sign you out of the current session.')) {
+                try {
+                    await auth.signOut();
+                    sessionStorage.removeItem('user');
+                    // Reload page to clear the notice
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Error signing out:', error);
+                    alert('Error signing out. Please try again.');
+                }
+            }
+        });
+    }
+    
+    // Function to check and display current user
+    async function checkCurrentUser() {
+        const user = auth.currentUser;
+        const currentUserNotice = document.getElementById('currentUserNotice');
+        const currentUserEmail = document.getElementById('currentUserEmail');
+        
+        if (user && currentUserNotice && currentUserEmail) {
+            try {
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                if (userDoc.exists) {
+                    const userData = userDoc.data();
+                    const displayEmail = userData.email || user.email || 'Current User';
+                    currentUserEmail.textContent = displayEmail;
+                    currentUserNotice.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error checking current user:', error);
+            }
+        }
+    }
 
     // Set max lengths
     emailInput.setAttribute('maxlength', '100');

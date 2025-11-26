@@ -25,6 +25,13 @@
                 <p>Student Portal - Login</p>
             </div>
             
+            <!-- Current User Notice (shown if already logged in) -->
+            <div id="currentUserNotice" class="login-notice" style="display: none;">
+                <p><strong>Already logged in:</strong> <span id="currentUserEmail"></span></p>
+                <p class="notice-text">You can log in with a different account below, or use a different browser profile/incognito window to access multiple accounts simultaneously.</p>
+                <button type="button" id="switchAccountBtn" class="btn btn-secondary btn-small">Switch Account</button>
+            </div>
+
             <form id="loginForm" class="login-form">
                 <div class="form-group">
                     <label for="email">Student ID / Email</label>
@@ -69,6 +76,10 @@
                     <button type="submit" id="loginBtn" class="btn btn-primary">Login</button>
                     <button type="button" id="resetBtn" class="btn btn-secondary">Clear</button>
                     <button type="button" id="exitBtn" class="btn btn-danger">Exit</button>
+                </div>
+                
+                <div class="login-footer">
+                    <p class="multi-account-hint"><small>💡 Tip: Use different browser profiles or incognito windows to access multiple accounts simultaneously</small></p>
                 </div>
             </form>
             </div>

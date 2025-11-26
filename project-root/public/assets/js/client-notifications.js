@@ -36,35 +36,98 @@ async function loadNotifications() {
             return;
         }
 
+        notifications = [];
+        const userId = currentUser.uid;
+        
+        console.log('Querying notifications for user ID:', userId);
+        
         let notificationsSnapshot;
         
         try {
-            // Try to get notifications ordered by timestamp
+            // Query notifications where the user is in targetUserIds
+            // This works with Firestore security rules
+            // Try with orderBy first (requires composite index)
+            console.log('Attempting query with orderBy...');
             notificationsSnapshot = await db.collection('notifications')
+                .where('targetUserIds', 'array-contains', userId)
                 .orderBy('timestamp', 'desc')
                 .get();
+            console.log('Query with orderBy succeeded, got', notificationsSnapshot.size, 'notifications');
         } catch (error) {
-            // If index doesn't exist, get all notifications and sort manually
-            console.warn('Index not found, fetching all notifications:', error);
-            notificationsSnapshot = await db.collection('notifications').get();
+            // If index doesn't exist, try without orderBy
+            // This will still work with security rules, we'll sort client-side
+            if (error.code === 'failed-precondition' || error.message.includes('index') || error.code === 'unavailable') {
+                // Index missing is expected - we'll sort client-side instead
+                // Only log if in development mode
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    console.info('Composite index not found. Fetching without orderBy (will sort client-side).');
+                    console.info('To enable server-side sorting, create the index:', error.message.match(/https:\/\/[^\s]+/)?.[0] || 'See Firebase Console');
+                }
+                try {
+                    notificationsSnapshot = await db.collection('notifications')
+                        .where('targetUserIds', 'array-contains', userId)
+                        .get();
+                    console.log('Query succeeded, got', notificationsSnapshot.size, 'notifications');
+                } catch (error2) {
+                    console.error('Query failed:', error2.code, error2.message);
+                    throw error2; // Re-throw to be handled by outer catch
+                }
+            } else {
+                // For other errors (like permissions), throw immediately
+                console.error('Query failed with error:', error.code, error.message);
+                throw error;
+            }
         }
-
-        notifications = [];
-        const userId = currentUser.uid;
+        
+        // Get user data to check role-based notifications
+        let userData = null;
+        try {
+            const userDoc = await db.collection('users').doc(userId).get();
+            if (userDoc.exists) {
+                userData = userDoc.data();
+            }
+        } catch (error) {
+            console.warn('Could not fetch user data:', error);
+        }
         
         notificationsSnapshot.forEach(doc => {
             const notification = doc.data();
             
-            // Ensure targetUserIds is an array
-            const targetUserIds = Array.isArray(notification.targetUserIds) 
-                ? notification.targetUserIds 
-                : (notification.targetUserIds ? [notification.targetUserIds] : []);
+            // Since we're using where('targetUserIds', 'array-contains', userId),
+            // all returned documents should already be for this user.
+            // However, we'll do a safety check in case the query fell back to getting all notifications.
+            let shouldInclude = false;
             
-            // Only include notifications where user is in targetUserIds
-            if (targetUserIds.length > 0 && targetUserIds.includes(userId)) {
+            // Check if user is in targetUserIds
+            if (notification.targetUserIds) {
+                const targetUserIds = Array.isArray(notification.targetUserIds) 
+                    ? notification.targetUserIds 
+                    : [notification.targetUserIds];
+                
+                // Convert to strings for comparison
+                const targetUserIdsStrings = targetUserIds.map(id => String(id).trim());
+                const userIdString = String(userId).trim();
+                
+                // Check if user ID is in the array (case-insensitive)
+                shouldInclude = targetUserIdsStrings.some(id => 
+                    id === userIdString || 
+                    id.toLowerCase() === userIdString.toLowerCase()
+                );
+            }
+            
+            // Also check if notification is role-based (for backward compatibility)
+            if (!shouldInclude && notification.targetRole && userData && userData.role) {
+                shouldInclude = notification.targetRole === userData.role || 
+                               (notification.targetRole === 'Client User' && userData.role === 'Client User');
+            }
+            
+            // Include notification if it matches
+            if (shouldInclude) {
+                const userIdString = String(userId).trim();
                 const isRead = notification.readStatus && 
                               typeof notification.readStatus === 'object' && 
-                              notification.readStatus[userId] === true;
+                              (notification.readStatus[userId] === true || 
+                               notification.readStatus[userIdString] === true);
                 
                 notifications.push({
                     id: doc.id,
@@ -94,14 +157,38 @@ async function loadNotifications() {
         applyFilters();
 
         console.log(`Loaded ${notifications.length} notifications for user ${userId}`);
+        
+        // Debug: Log if no notifications found
+        if (notifications.length === 0) {
+            console.log('No notifications found. Checking notification structure...');
+            const sampleNotification = notificationsSnapshot.docs[0];
+            if (sampleNotification) {
+                const sampleData = sampleNotification.data();
+                console.log('Sample notification structure:', {
+                    hasTargetUserIds: !!sampleData.targetUserIds,
+                    targetUserIdsType: typeof sampleData.targetUserIds,
+                    targetUserIdsValue: sampleData.targetUserIds,
+                    currentUserId: userId
+                });
+            }
+        }
 
     } catch (error) {
         console.error('Error loading notifications:', error);
-        console.error('Error details:', error.message, error.stack);
+        console.error('Error details:', error.message, error.code, error.stack);
         const notificationsList = document.getElementById('notificationsList');
         if (notificationsList) {
-            notificationsList.innerHTML = 
-                '<div class="table-error">Error loading notifications. Please refresh the page.</div>';
+            let errorMessage = 'Error loading notifications. ';
+            
+            if (error.code === 'permission-denied' || error.message.includes('permissions')) {
+                errorMessage += 'You do not have permission to view notifications. Please contact an administrator.';
+            } else if (error.code === 'failed-precondition') {
+                errorMessage += 'A required index is missing. Please contact an administrator to create the index.';
+            } else {
+                errorMessage += 'Please refresh the page or contact support if the problem persists.';
+            }
+            
+            notificationsList.innerHTML = `<div class="table-error">${errorMessage}</div>`;
         }
     }
 }
@@ -272,12 +359,7 @@ function createNotificationCard(notification) {
                     <p class="notification-message">${notification.message || 'No message'}</p>
                     <div class="notification-footer">
                         <span class="notification-time" title="${fullDateText}">${dateText}</span>
-                        ${!notification.isRead ? '<button class="mark-read-btn" title="Mark as read">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                            </svg>
-                        </button>' : ''}
+                        ${!notification.isRead ? '<button class="mark-read-btn" title="Mark as read"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></button>' : ''}
                     </div>
                 </div>
             </div>
