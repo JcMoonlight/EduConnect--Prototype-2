@@ -1,5 +1,8 @@
 // Client Events Script - View Events
 let currentUser = null;
+let allEvents = [];
+let filteredEvents = [];
+let currentFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', async function() {
     setTimeout(async function() {
@@ -8,8 +11,22 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         currentUser = user;
         await loadEvents();
+        setupEventListeners();
     }, 1000);
 });
+
+// Setup Event Listeners
+function setupEventListeners() {
+    // Filter tabs
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            currentFilter = this.dataset.filter;
+            applyFilters();
+        });
+    });
+}
 
 // Load all events
 async function loadEvents() {
@@ -23,16 +40,25 @@ async function loadEvents() {
 
         if (eventsSnapshot.empty) {
             eventsGrid.innerHTML = '<div class="table-empty">No events found</div>';
+            allEvents = [];
+            filteredEvents = [];
             return;
         }
 
-        eventsGrid.innerHTML = '';
-
+        allEvents = [];
         eventsSnapshot.forEach(doc => {
             const event = doc.data();
-            const eventCard = createEventCard(doc.id, event);
-            eventsGrid.appendChild(eventCard);
+            allEvents.push({
+                id: doc.id,
+                ...event
+            });
         });
+
+        // Categorize events
+        categorizeEvents();
+        
+        // Apply initial filter
+        applyFilters();
 
     } catch (error) {
         console.error('Error loading events:', error);
@@ -41,16 +67,76 @@ async function loadEvents() {
     }
 }
 
+// Categorize events by status
+function categorizeEvents() {
+    const now = new Date();
+    
+    allEvents.forEach(event => {
+        if (event.dateTime) {
+            const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
+            const eventEndTime = new Date(eventDate.getTime() + (2 * 60 * 60 * 1000)); // Assume 2 hour duration
+            
+            if (eventDate > now) {
+                event.status = 'upcoming';
+            } else if (eventDate <= now && eventEndTime >= now) {
+                event.status = 'ongoing';
+            } else {
+                event.status = 'done';
+            }
+        } else {
+            event.status = 'upcoming'; // Default to upcoming if no date
+        }
+    });
+}
+
+// Apply Filters
+function applyFilters() {
+    filteredEvents = allEvents.filter(event => {
+        if (currentFilter === 'all') {
+            return true;
+        }
+        return event.status === currentFilter;
+    });
+
+    displayEvents();
+}
+
+// Display Events
+function displayEvents() {
+    const eventsGrid = document.getElementById('eventsGrid');
+
+    if (filteredEvents.length === 0) {
+        let emptyMessage = 'No events found';
+        if (currentFilter === 'upcoming') {
+            emptyMessage = 'No upcoming events';
+        } else if (currentFilter === 'ongoing') {
+            emptyMessage = 'No ongoing events';
+        } else if (currentFilter === 'done') {
+            emptyMessage = 'No completed events';
+        }
+        eventsGrid.innerHTML = `<div class="table-empty">${emptyMessage}</div>`;
+        return;
+    }
+
+    eventsGrid.innerHTML = '';
+
+    filteredEvents.forEach(event => {
+        const eventCard = createEventCard(event.id, event);
+        eventsGrid.appendChild(eventCard);
+    });
+}
+
 // Create event card
 function createEventCard(eventId, event) {
     const card = document.createElement('div');
     card.className = 'event-card';
 
     let dateTimeText = 'Date TBD';
-    let status = 'upcoming';
+    // Use the status that was already categorized, or determine it if not set
+    let status = event.status || 'upcoming';
+    
     if (event.dateTime) {
-        const eventDate = event.dateTime.toDate();
-        const now = new Date();
+        const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
         
         dateTimeText = eventDate.toLocaleDateString('en-US', {
             weekday: 'long',
@@ -61,14 +147,30 @@ function createEventCard(eventId, event) {
             minute: '2-digit'
         });
 
-        if (eventDate > now) {
-            status = 'upcoming';
-        } else if (eventDate <= now && eventDate >= new Date(now.getTime() - 24 * 60 * 60 * 1000)) {
-            status = 'ongoing';
-        } else {
-            status = 'completed';
+        // If status wasn't set, determine it now
+        if (!event.status) {
+            const now = new Date();
+            const eventEndTime = new Date(eventDate.getTime() + (2 * 60 * 60 * 1000)); // Assume 2 hour duration
+            
+            if (eventDate > now) {
+                status = 'upcoming';
+            } else if (eventDate <= now && eventEndTime >= now) {
+                status = 'ongoing';
+            } else {
+                status = 'done';
+            }
         }
     }
+    
+    // Map status for display
+    const statusLabels = {
+        'upcoming': 'Upcoming',
+        'ongoing': 'Ongoing',
+        'done': 'Done',
+        'completed': 'Done'
+    };
+    
+    const statusLabel = statusLabels[status] || status.charAt(0).toUpperCase() + status.slice(1);
 
     const attendeesCount = event.attendees ? event.attendees.length : 0;
     const isAttending = event.attendees && event.attendees.includes(currentUser.uid);
@@ -76,7 +178,7 @@ function createEventCard(eventId, event) {
     card.innerHTML = `
         <div class="event-card-header">
             <h3 class="event-card-title">${event.eventName || 'Untitled Event'}</h3>
-            <span class="status-badge status-${status}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+            <span class="status-badge status-${status}">${statusLabel}</span>
         </div>
         <div class="event-card-body">
             <p class="event-card-description">${event.description || 'No description available.'}</p>

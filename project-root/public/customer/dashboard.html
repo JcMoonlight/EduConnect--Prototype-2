@@ -115,13 +115,21 @@
 
             <!-- Content Grid -->
             <section class="content-grid">
-                <!-- Upcoming Events Card -->
+                <!-- Events Card -->
                 <div class="content-card">
                     <div class="card-header">
-                        <h3 class="card-title">Upcoming Events</h3>
+                        <h3 class="card-title">Events</h3>
                         <a href="events.html" class="card-link">View All</a>
                     </div>
                     <div class="card-body">
+                        <!-- Event Filters -->
+                        <div class="event-filters" style="margin-bottom: 1rem;">
+                            <div class="filter-tabs" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button class="filter-tab active" data-filter="upcoming" style="padding: 0.5rem 1rem; border: 1px solid #e0e0e0; background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Upcoming</button>
+                                <button class="filter-tab" data-filter="ongoing" style="padding: 0.5rem 1rem; border: 1px solid #e0e0e0; background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Ongoing</button>
+                                <button class="filter-tab" data-filter="done" style="padding: 0.5rem 1rem; border: 1px solid #e0e0e0; background: #fff; border-radius: 4px; cursor: pointer; font-size: 0.875rem;">Done</button>
+                            </div>
+                        </div>
                         <div class="activity-list" id="upcomingEventsList">
                             <div class="activity-item">
                                 <div class="activity-icon activity-login"></div>

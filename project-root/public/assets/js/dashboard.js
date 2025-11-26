@@ -173,21 +173,31 @@ async function loadStudentDashboard(userId) {
         if (upcomingEventsEl) upcomingEventsEl.textContent = upcomingCount;
 
         // Get unread notifications count
-        const notificationsSnapshot = await db.collection('notifications').get();
+        // Use where clause to work with security rules
         let unreadCount = 0;
         let totalNotifications = 0;
-        notificationsSnapshot.forEach(doc => {
-            const notification = doc.data();
-            if (notification.targetUserIds && Array.isArray(notification.targetUserIds)) {
-                if (notification.targetUserIds.includes(userId)) {
-                    totalNotifications++;
-                    const readStatus = notification.readStatus || {};
-                    if (!readStatus[userId]) {
-                        unreadCount++;
-                    }
+        
+        try {
+            const notificationsSnapshot = await db.collection('notifications')
+                .where('targetUserIds', 'array-contains', userId)
+                .get();
+            
+            notificationsSnapshot.forEach(doc => {
+                const notification = doc.data();
+                totalNotifications++;
+                const readStatus = notification.readStatus || {};
+                if (!readStatus[userId]) {
+                    unreadCount++;
                 }
-            }
-        });
+            });
+        } catch (error) {
+            // If query fails (e.g., index missing), try without where clause
+            // But this will fail with permissions, so we'll just set to 0
+            console.warn('Could not load notifications count:', error);
+            unreadCount = 0;
+            totalNotifications = 0;
+        }
+        
         const notificationsEl = document.getElementById('notifications');
         if (notificationsEl) notificationsEl.textContent = unreadCount;
 
@@ -304,58 +314,63 @@ function createActivityItem(activity) {
     return item;
 }
 
-// Load Upcoming Events List for Students
+// Dashboard events state
+let dashboardEvents = [];
+let dashboardEventsFilter = 'upcoming';
+
+// Load Events List for Students Dashboard
 async function loadUpcomingEventsList(userId, limit = 5) {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
         // Always use manual filtering to avoid index issues
         const allEventsSnapshot = await db.collection('events').get();
-        const upcomingEvents = [];
+        dashboardEvents = [];
+        
+        const now = new Date();
         
         allEventsSnapshot.forEach(doc => {
             const event = doc.data();
             if (event.dateTime) {
                 const eventDate = event.dateTime.toDate ? event.dateTime.toDate() : new Date(event.dateTime);
-                if (eventDate >= today) {
-                    upcomingEvents.push({ id: doc.id, ...event, dateTime: event.dateTime });
+                const eventEndTime = new Date(eventDate.getTime() + (2 * 60 * 60 * 1000)); // Assume 2 hour duration
+                
+                let status = 'upcoming';
+                if (eventDate > now) {
+                    status = 'upcoming';
+                } else if (eventDate <= now && eventEndTime >= now) {
+                    status = 'ongoing';
+                } else {
+                    status = 'done';
                 }
+                
+                dashboardEvents.push({ 
+                    id: doc.id, 
+                    ...event, 
+                    dateTime: event.dateTime,
+                    status: status
+                });
             }
         });
         
-        // Sort by date
-        upcomingEvents.sort((a, b) => {
+        // Sort by date (upcoming first, then by date)
+        dashboardEvents.sort((a, b) => {
             const dateA = a.dateTime.toDate ? a.dateTime.toDate() : new Date(a.dateTime);
             const dateB = b.dateTime.toDate ? b.dateTime.toDate() : new Date(b.dateTime);
+            
+            // Upcoming events first, then by date
+            if (a.status === 'upcoming' && b.status !== 'upcoming') return -1;
+            if (a.status !== 'upcoming' && b.status === 'upcoming') return 1;
+            
             return dateA - dateB;
         });
 
-        const eventsList = document.getElementById('upcomingEventsList');
-
-        if (!eventsList) return;
-
-        if (upcomingEvents.length === 0) {
-            eventsList.innerHTML = `
-                <div class="activity-item">
-                    <div class="activity-content">
-                        <p class="activity-text">No upcoming events</p>
-                    </div>
-                </div>
-            `;
-            return;
-        }
-
-        eventsList.innerHTML = '';
-
-        // Show only the first 'limit' events
-        upcomingEvents.slice(0, limit).forEach(event => {
-            const eventItem = createEventItem(event, event.id);
-            eventsList.appendChild(eventItem);
-        });
+        // Setup filter listeners if not already set up
+        setupDashboardEventFilters();
+        
+        // Apply current filter
+        applyDashboardEventFilter(limit);
 
     } catch (error) {
-        console.error('Error loading upcoming events:', error);
+        console.error('Error loading events:', error);
         console.error('Error details:', error.message, error.stack);
         const eventsList = document.getElementById('upcomingEventsList');
         if (eventsList) {
@@ -368,6 +383,77 @@ async function loadUpcomingEventsList(userId, limit = 5) {
             `;
         }
     }
+}
+
+// Setup Dashboard Event Filter Listeners
+function setupDashboardEventFilters() {
+    // Remove existing listeners to avoid duplicates
+    const filterTabs = document.querySelectorAll('.content-card .filter-tab');
+    filterTabs.forEach(tab => {
+        // Clone to remove old listeners
+        const newTab = tab.cloneNode(true);
+        tab.parentNode.replaceChild(newTab, tab);
+        
+        // Add new listener
+        newTab.addEventListener('click', function() {
+            document.querySelectorAll('.content-card .filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            dashboardEventsFilter = this.dataset.filter;
+            applyDashboardEventFilter(5);
+        });
+    });
+}
+
+// Apply Dashboard Event Filter
+function applyDashboardEventFilter(limit = 5) {
+    const eventsList = document.getElementById('upcomingEventsList');
+    if (!eventsList) return;
+
+    // Filter events by status
+    let filteredEvents = dashboardEvents.filter(event => {
+        if (dashboardEventsFilter === 'upcoming') {
+            return event.status === 'upcoming';
+        } else if (dashboardEventsFilter === 'ongoing') {
+            return event.status === 'ongoing';
+        } else if (dashboardEventsFilter === 'done') {
+            return event.status === 'done';
+        }
+        return true;
+    });
+
+    // Sort filtered events
+    filteredEvents.sort((a, b) => {
+        const dateA = a.dateTime.toDate ? a.dateTime.toDate() : new Date(a.dateTime);
+        const dateB = b.dateTime.toDate ? b.dateTime.toDate() : new Date(b.dateTime);
+        return dateA - dateB;
+    });
+
+    if (filteredEvents.length === 0) {
+        let emptyMessage = 'No events found';
+        if (dashboardEventsFilter === 'upcoming') {
+            emptyMessage = 'No upcoming events';
+        } else if (dashboardEventsFilter === 'ongoing') {
+            emptyMessage = 'No ongoing events';
+        } else if (dashboardEventsFilter === 'done') {
+            emptyMessage = 'No completed events';
+        }
+        eventsList.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-content">
+                    <p class="activity-text">${emptyMessage}</p>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    eventsList.innerHTML = '';
+
+    // Show only the first 'limit' events
+    filteredEvents.slice(0, limit).forEach(event => {
+        const eventItem = createEventItem(event, event.id);
+        eventsList.appendChild(eventItem);
+    });
 }
 
 // Create Event Item Element
