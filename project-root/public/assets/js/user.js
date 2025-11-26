@@ -334,8 +334,8 @@ async function handleFormSubmit(e) {
         studentId: document.getElementById('studentId').value.trim() || null
     };
 
-    // Validation
-    if (!validateForm(userData, isEditMode)) {
+    // Validation (now async)
+    if (!(await validateForm(userData, isEditMode))) {
         return;
     }
 
@@ -364,8 +364,157 @@ async function handleFormSubmit(e) {
     }
 }
 
+// Check for duplicate values and suggest alternatives
+async function checkDuplicates(userData, isEditMode, currentUserId = null) {
+    const duplicates = {
+        email: null,
+        username: null,
+        studentId: null,
+        password: null
+    };
+    const suggestions = {
+        email: null,
+        username: null,
+        studentId: null
+    };
+
+    // Check email duplicates
+    const emailQuery = await db.collection('users')
+        .where('email', '==', userData.email.toLowerCase())
+        .get();
+    
+    if (!emailQuery.empty) {
+        const existingUser = emailQuery.docs.find(doc => 
+            isEditMode ? doc.id !== currentUserId : true
+        );
+        if (existingUser) {
+            duplicates.email = userData.email;
+            suggestions.email = generateEmailSuggestion(userData.email);
+        }
+    }
+
+    // Check username duplicates
+    if (userData.username) {
+        const usernameQuery = await db.collection('users')
+            .where('username', '==', userData.username.toLowerCase())
+            .get();
+        
+        if (!usernameQuery.empty) {
+            const existingUser = usernameQuery.docs.find(doc => 
+                isEditMode ? doc.id !== currentUserId : true
+            );
+            if (existingUser) {
+                duplicates.username = userData.username;
+                suggestions.username = generateUsernameSuggestion(userData.username);
+            }
+        }
+    }
+
+    // Check student ID duplicates (for Client Users)
+    if (userData.studentId) {
+        const studentIdQuery = await db.collection('users')
+            .where('studentId', '==', userData.studentId)
+            .get();
+        
+        if (!studentIdQuery.empty) {
+            const existingUser = studentIdQuery.docs.find(doc => 
+                isEditMode ? doc.id !== currentUserId : true
+            );
+            if (existingUser) {
+                duplicates.studentId = userData.studentId;
+                suggestions.studentId = generateStudentIdSuggestion(userData.studentId);
+            }
+        }
+    }
+
+    // Check password duplicates (compare with existing users' passwords)
+    if (!isEditMode) {
+        const password = document.getElementById('password').value;
+        if (password) {
+            // Note: We can't directly compare hashed passwords, but we can check if the same
+            // password is being used by checking if it matches common patterns
+            // For security, we'll just warn if password seems too common
+            const passwordWarning = checkPasswordUniqueness(password);
+            if (passwordWarning) {
+                duplicates.password = passwordWarning;
+            }
+        }
+    }
+
+    return { duplicates, suggestions };
+}
+
+// Generate email suggestion
+function generateEmailSuggestion(email) {
+    const [localPart, domain] = email.split('@');
+    const suggestions = [];
+    
+    // Add number suffix
+    for (let i = 1; i <= 5; i++) {
+        suggestions.push(`${localPart}${i}@${domain}`);
+    }
+    
+    // Add underscore variant
+    suggestions.push(`${localPart}_alt@${domain}`);
+    
+    // Add year suffix
+    const currentYear = new Date().getFullYear();
+    suggestions.push(`${localPart}${currentYear}@${domain}`);
+    
+    return suggestions[0]; // Return first suggestion
+}
+
+// Generate username suggestion
+function generateUsernameSuggestion(username) {
+    const suggestions = [];
+    
+    // Add number suffix
+    for (let i = 1; i <= 5; i++) {
+        suggestions.push(`${username}${i}`);
+    }
+    
+    // Add underscore variant
+    suggestions.push(`${username}_alt`);
+    
+    // Add year suffix
+    const currentYear = new Date().getFullYear();
+    suggestions.push(`${username}${currentYear}`);
+    
+    // Add random suffix
+    const randomNum = Math.floor(Math.random() * 1000);
+    suggestions.push(`${username}${randomNum}`);
+    
+    return suggestions[0]; // Return first suggestion
+}
+
+// Generate student ID suggestion
+function generateStudentIdSuggestion(studentId) {
+    // Try to extract numeric part and increment
+    const match = studentId.match(/(\d+)$/);
+    if (match) {
+        const numPart = parseInt(match[1]);
+        const prefix = studentId.substring(0, match.index);
+        return `${prefix}${numPart + 1}`;
+    }
+    
+    // If no numeric suffix, add one
+    return `${studentId}1`;
+}
+
+// Check password uniqueness (basic check - can't compare hashed passwords)
+function checkPasswordUniqueness(password) {
+    // Common weak passwords to warn about
+    const commonPasswords = ['password', 'password123', 'admin123', '12345678', 'qwerty123'];
+    
+    if (commonPasswords.includes(password.toLowerCase())) {
+        return 'This password appears to be commonly used. Consider using a more unique password.';
+    }
+    
+    return null;
+}
+
 // Validate Form
-function validateForm(userData, isEditMode) {
+async function validateForm(userData, isEditMode) {
     let isValid = true;
 
     if (!userData.firstName) {
@@ -417,6 +566,32 @@ function validateForm(userData, isEditMode) {
         }
     }
 
+    // Check for duplicates
+    if (isValid) {
+        const userId = isEditMode ? document.getElementById('userId').value : null;
+        const duplicateCheck = await checkDuplicates(userData, isEditMode, userId);
+        
+        if (duplicateCheck.duplicates.email) {
+            showFieldError('email', `This email is already in use. Suggestion: ${duplicateCheck.suggestions.email}`);
+            isValid = false;
+        }
+        
+        if (duplicateCheck.duplicates.username) {
+            showFieldError('username', `This username is already taken. Suggestion: ${duplicateCheck.suggestions.username}`);
+            isValid = false;
+        }
+        
+        if (duplicateCheck.duplicates.studentId) {
+            showFieldError('studentId', `This student ID is already in use. Suggestion: ${duplicateCheck.suggestions.studentId}`);
+            isValid = false;
+        }
+        
+        if (duplicateCheck.duplicates.password) {
+            showFieldError('password', duplicateCheck.duplicates.password);
+            // Don't block submission, just warn
+        }
+    }
+
     return isValid;
 }
 
@@ -424,30 +599,173 @@ function validateForm(userData, isEditMode) {
 async function createUser(userData) {
     const password = document.getElementById('password').value;
 
-    // Create user in Firebase Authentication
-    const userCredential = await auth.createUserWithEmailAndPassword(userData.email, password);
-    const firebaseUser = userCredential.user;
-
-    // Create user document in Firestore
-    const userDoc = {
-        email: userData.email,
-        username: userData.username,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        role: userData.role,
-        status: userData.status,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    if (userData.studentId) {
-        userDoc.studentId = userData.studentId;
+    // Store the current superadmin user info before creating new user
+    // This is important because createUserWithEmailAndPassword will sign in as the new user
+    const originalUser = auth.currentUser;
+    if (!originalUser) {
+        throw new Error('No authenticated user found. Please log in again.');
     }
+    
+    const originalUserEmail = originalUser.email;
+    const originalUserUid = originalUser.uid;
+    const originalUserRole = currentUserRole;
 
-    await db.collection('users').doc(firebaseUser.uid).set(userDoc);
+    try {
+        // Create user in Firebase Authentication
+        // Note: This will automatically sign in as the new user, logging out the superadmin
+        const userCredential = await auth.createUserWithEmailAndPassword(userData.email, password);
+        const firebaseUser = userCredential.user;
 
-    // Log to audit trail
-    await logAuditTrail(currentUser.uid, 'create', `Created user: ${userData.email} with role: ${userData.role}`);
+        // Create user document in Firestore
+        const userDoc = {
+            email: userData.email,
+            username: userData.username,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            role: userData.role,
+            status: userData.status,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (userData.studentId) {
+            userDoc.studentId = userData.studentId;
+        }
+
+        await db.collection('users').doc(firebaseUser.uid).set(userDoc);
+
+        // Log to audit trail using the original user's UID (before we sign out)
+        await logAuditTrail(originalUserUid, 'create', `Created user: ${userData.email} with role: ${userData.role}`);
+
+        // Immediately sign out the newly created user
+        await auth.signOut();
+        
+        // Now restore the original superadmin session
+        // Since we can't sign in without password on client-side, we'll prompt for it
+        // This is the best client-side solution to avoid full logout
+        await restoreSuperAdminSession(originalUserEmail, originalUserUid);
+        
+    } catch (error) {
+        // If there's an error, try to restore the original user session if possible
+        // Sign out any current user first
+        if (auth.currentUser && auth.currentUser.uid !== originalUserUid) {
+            await auth.signOut();
+        }
+        
+        // Re-throw the error to be handled by the calling function
+        throw error;
+    }
+}
+
+// Restore superadmin session after creating a user
+async function restoreSuperAdminSession(originalUserEmail, originalUserUid) {
+    return new Promise((resolve, reject) => {
+        // Show a modal to re-enter password
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title">Re-authentication Required</h2>
+                </div>
+                <div class="modal-body">
+                    <p>User created successfully! For security, please re-enter your password to continue.</p>
+                    <div class="form-group">
+                        <label for="restorePassword">Your Password</label>
+                        <input type="password" id="restorePassword" class="form-control" placeholder="Enter your password" autocomplete="current-password" />
+                        <span class="error-message" id="restorePasswordError"></span>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-primary" id="restoreSessionBtn">Continue</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        const restoreBtn = modal.querySelector('#restoreSessionBtn');
+        const passwordInput = modal.querySelector('#restorePassword');
+        const errorMsg = modal.querySelector('#restorePasswordError');
+        const overlay = modal.querySelector('.modal-overlay');
+        
+        // Focus on password input
+        setTimeout(() => passwordInput.focus(), 100);
+        
+        // Handle restore
+        async function handleRestore() {
+            const password = passwordInput.value;
+            
+            if (!password) {
+                errorMsg.textContent = 'Password is required';
+                return;
+            }
+            
+            restoreBtn.disabled = true;
+            restoreBtn.textContent = 'Restoring session...';
+            errorMsg.textContent = '';
+            
+            try {
+                // Sign in as the original superadmin
+                await auth.signInWithEmailAndPassword(originalUserEmail, password);
+                
+                // Verify it's the correct user and get fresh user data
+                const restoredUser = auth.currentUser;
+                if (restoredUser && restoredUser.uid === originalUserUid) {
+                    // Get fresh user data from Firestore
+                    const userDoc = await db.collection('users').doc(originalUserUid).get();
+                    if (userDoc.exists) {
+                        const userData = userDoc.data();
+                        const userRole = userData.role || 'Super Admin';
+                        
+                        // Update current user references
+                        currentUser = restoredUser;
+                        currentUserRole = userRole;
+                        
+                        // Update sessionStorage
+                        sessionStorage.setItem('user', JSON.stringify({
+                            uid: restoredUser.uid,
+                            email: restoredUser.email,
+                            role: userRole,
+                            username: userData.username || restoredUser.email,
+                            firstName: userData.firstName || '',
+                            lastName: userData.lastName || ''
+                        }));
+                        
+                        // Remove modal
+                        modal.remove();
+                        resolve();
+                    } else {
+                        throw new Error('User data not found');
+                    }
+                } else {
+                    throw new Error('Session restoration failed');
+                }
+            } catch (error) {
+                console.error('Error restoring session:', error);
+                const errorMessage = error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found'
+                    ? 'Invalid password. Please try again.'
+                    : 'Error restoring session. Please try again.';
+                errorMsg.textContent = errorMessage;
+                restoreBtn.disabled = false;
+                restoreBtn.textContent = 'Continue';
+            }
+        }
+        
+        restoreBtn.addEventListener('click', handleRestore);
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleRestore();
+            }
+        });
+        
+        // Close on overlay click (but don't allow closing without restoring)
+        overlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    });
 }
 
 // Update User
@@ -599,9 +917,38 @@ function isValidEmail(email) {
 function showFieldError(fieldId, message) {
     const errorElement = document.getElementById(fieldId + 'Error');
     const inputElement = document.getElementById(fieldId);
-    if (errorElement) errorElement.textContent = message;
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = 'block';
+        
+        // If message contains a suggestion, make it more visible
+        if (message.includes('Suggestion:')) {
+            const parts = message.split('Suggestion:');
+            if (parts.length > 1) {
+                const suggestion = parts[1].trim();
+                errorElement.innerHTML = parts[0] + '<br><strong>Suggestion:</strong> <span class="suggestion-text" style="color: #4CAF50; cursor: pointer; text-decoration: underline;" onclick="applySuggestion(\'' + fieldId + '\', \'' + suggestion + '\')">' + suggestion + '</span>';
+            }
+        }
+    }
     if (inputElement) inputElement.classList.add('error');
 }
+
+// Apply suggestion to a field
+function applySuggestion(fieldId, suggestion) {
+    const inputElement = document.getElementById(fieldId);
+    if (inputElement) {
+        inputElement.value = suggestion;
+        inputElement.classList.remove('error');
+        const errorElement = document.getElementById(fieldId + 'Error');
+        if (errorElement) {
+            errorElement.textContent = '';
+            errorElement.style.display = 'none';
+        }
+    }
+}
+
+// Make applySuggestion available globally
+window.applySuggestion = applySuggestion;
 
 function clearFormErrors() {
     document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
