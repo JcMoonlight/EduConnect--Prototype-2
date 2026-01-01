@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const loginBtn = document.getElementById('loginBtn');
-    const resetBtn = document.getElementById('resetBtn');
+    // const resetBtn = document.getElementById('resetBtn');
     const exitBtn = document.getElementById('exitBtn');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
@@ -241,12 +241,12 @@ document.addEventListener('DOMContentLoaded', function() {
         handleLogin();
     });
 
-    resetBtn.addEventListener('click', function() {
-        emailInput.value = '';
-        passwordInput.value = '';
-        clearErrors();
-        emailInput.focus();
-    });
+    // resetBtn.addEventListener('click', function() {
+    //     emailInput.value = '';
+    //     passwordInput.value = '';
+    //     clearErrors();
+    //     emailInput.focus();
+    // });
 
     exitBtn.addEventListener('click', function() {
         if (confirm('Are you sure you want to exit?')) {
